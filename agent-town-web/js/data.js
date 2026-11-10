@@ -27,6 +27,19 @@
   };
   AT.reports = R;
 
+  /* ---------- weekly and monthly task boards (shown on the office wall) ---------- */
+  const B = {};
+  B.MAX = 30;
+  const clean = (list) => (Array.isArray(list) ? list : []).slice(0, B.MAX).map((it) => ({
+    id: String((it && it.id) || AT.uid(8)).slice(0, 24),
+    text: String((it && it.text) || "").trim().slice(0, 120),
+    agent: String((it && it.agent) || "").slice(0, 40),
+    done: !!(it && it.done),
+  })).filter((it) => it.text);
+  B.get = () => { const b = AT.store.get("boards") || {}; return { week: clean(b.week), month: clean(b.month) }; };
+  B.save = (b) => { const v = { week: clean(b && b.week), month: clean(b && b.month) }; AT.store.set("boards", v); return v; };
+  AT.boards = B;
+
   /* ---------- shared image library (made by designer agents, visible to the whole team as text) ---------- */
   const I = {};
   const MAX_IMAGES = 40;

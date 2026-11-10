@@ -29,6 +29,13 @@
   add("GET", "/api/office", () => J(AT.office.view()));
   add("POST", "/api/office/branding", (b) => J(AT.office.saveBranding(b || {})));
   add("POST", "/api/office/layout", (b) => J(AT.office.saveLayout(b || {})));
+  add("POST", "/api/office/style", (b) => J(AT.office.saveStyle(b || {})));
+  add("GET", "/api/boards", () => J(AT.boards.get()));
+  add("POST", "/api/boards", (b) => J(AT.boards.save(b || {})));
+  add("POST", "/api/office/preset", (b) => {
+    const r = AT.office.applyPreset(b && b.key);
+    return r.error ? err(r.error) : J(AT.office.view());
+  });
 
   /* ----- team ----- */
   add("GET", "/api/team", () => J(AT.agents.teamView()));

@@ -27,6 +27,57 @@
   O.DESK_SLOTS = [[2, 6], [7, 6], [11, 6], [2, 9], [11, 9], [5, 8], [9, 8], [11, 4], [5, 5], [8, 3]];
   O.MANAGER_SLOT = [8, 3];
 
+  /* ---------- ready-made office plans (the owner can still move everything afterwards) ---------- */
+  O.PRESETS = {
+    classic: {
+      label: "Classic office", desc: "Desks around a central rug, lounge by the window.",
+      manager: [8, 3], slots: [[2, 6], [7, 6], [11, 6], [2, 9], [11, 9], [5, 8], [9, 8], [11, 4], [5, 5]],
+      furniture: { sofa: { x: 4, y: 1 }, table: { x: 5, y: 3 }, shelf: { x: 9, y: 0 }, counter: { x: 12, y: 1 }, cooler: { x: 13, y: 3 }, showcase: { x: 6, y: 9 } },
+      plants: [[1, 1], [13, 5], [0, 10]],
+    },
+    open: {
+      label: "Open plan", desc: "Two tidy rows of desks, lots of floor space.",
+      manager: [8, 3], slots: [[2, 5], [6, 5], [10, 5], [2, 8], [6, 8], [10, 8], [11, 3]],
+      furniture: { sofa: { x: 5, y: 1 }, table: { x: 0, y: 3 }, shelf: { x: 10, y: 0 }, counter: { x: 12, y: 10 }, cooler: { x: 13, y: 1 }, showcase: { x: 0, y: 10 } },
+      plants: [[1, 1], [13, 7], [4, 10]],
+    },
+    pods: {
+      label: "Team pods", desc: "Desks in side-by-side pairs, a meeting table in the middle.",
+      manager: [8, 3], slots: [[2, 5], [5, 5], [9, 5], [12, 5], [2, 8], [5, 8], [9, 8], [12, 8], [11, 3]],
+      furniture: { sofa: { x: 0, y: 0 }, table: { x: 6, y: 6 }, shelf: { x: 11, y: 0 }, counter: { x: 0, y: 10 }, cooler: { x: 13, y: 2 }, showcase: { x: 7, y: 10 } },
+      plants: [[7, 1], [3, 10], [12, 10]],
+    },
+    lounge: {
+      label: "Cozy lounge", desc: "Fewer desks along the walls, a big relaxed middle.",
+      manager: [8, 3], slots: [[2, 6], [2, 9], [11, 6], [11, 9], [11, 4], [7, 9]],
+      furniture: { sofa: { x: 4, y: 6 }, table: { x: 5, y: 8 }, shelf: { x: 0, y: 0 }, counter: { x: 12, y: 1 }, cooler: { x: 7, y: 6 }, showcase: { x: 12, y: 10 } },
+      plants: [[1, 4], [9, 6], [9, 10]],
+    },
+  };
+  O.PRESET_KEYS = Object.keys(O.PRESETS);
+  const presetOf = (o) => O.PRESETS[(o && o.layout_preset)] || O.PRESETS.classic;
+  const slotsOf = (P, isManager) => (isManager ? [P.manager] : []).concat(P.slots).concat(isManager ? [] : [P.manager]);
+
+  /* ---------- look and furniture choices (what each choice looks like is drawn by the office page) ---------- */
+  const opt = (key, label, swatch) => ({ key, label, swatch });
+  O.STYLE_OPTIONS = {
+    floor: { label: "Floor", items: [opt("wood", "Warm wood", "#c9a06a"), opt("lightwood", "Light wood", "#e0c08a"), opt("darkwood", "Dark wood", "#7e5638"), opt("tile", "Tiles", "#dedad2"), opt("carpet", "Carpet", "#7b8795"), opt("concrete", "Concrete", "#b4b4b0")] },
+    wall: { label: "Walls", items: [opt("classic", "Cream & sage", "#e4dcc9"), opt("white", "Bright white", "#f2f2ee"), opt("navy", "Navy", "#46557a"), opt("terracotta", "Terracotta", "#d09478"), opt("rose", "Blush rose", "#ecc8cc"), opt("forest", "Forest green", "#9bba94"), opt("charcoal", "Charcoal", "#5c5f68"), opt("custom", "My own colour", "#d8d1c0")] },
+    desk: { label: "Desks", items: [opt("wood", "Wood", "#a4714a"), opt("white", "White", "#e5e1d8"), opt("dark", "Dark", "#3f3f4a"), opt("bamboo", "Bamboo", "#c8aa6a"), opt("navy", "Navy", "#3f5a88")] },
+    chair_color: { label: "Chair colour", items: [opt("team", "Team colour", "#58a6ff"), opt("black", "Black", "#2b2f3a"), opt("grey", "Grey", "#7b8392"), opt("white", "White", "#e8e6df"), opt("brown", "Brown", "#7a5230"), opt("red", "Red", "#a8433f"), opt("blue", "Blue", "#3f5f9a")] },
+    chair_shape: { label: "Chair style", items: [opt("office", "Office chair", "#8a93a3"), opt("highback", "High-back", "#8a93a3"), opt("stool", "Stool", "#8a93a3")] },
+    sofa: { label: "Sofa", items: [opt("blue", "Blue", "#5c6f95"), opt("grey", "Grey", "#7b8490"), opt("green", "Green", "#4f7a5e"), opt("brown", "Leather", "#8a5a3a"), opt("red", "Red", "#a24a4a"), opt("cream", "Cream", "#cfc3ac")] },
+    table: { label: "Table", items: [opt("wood", "Wood", "#8a6448"), opt("white", "White", "#eeebe4"), opt("dark", "Dark", "#45454f"), opt("glass", "Glass", "#9ec7d8"), opt("marble", "Marble", "#e4e5ea")] },
+    rug: { label: "Rug", items: [opt("purple", "Purple", "#5a3f6b"), opt("blue", "Blue", "#2f5083"), opt("green", "Green", "#3b6a48"), opt("red", "Red", "#7a3a42"), opt("grey", "Grey", "#5a5e68"), opt("none", "No rug", "#cdb08a")] },
+    plant: { label: "Plants", items: [opt("leafy", "Leafy", "#2f9e5b"), opt("cactus", "Cactus", "#5aa06a"), opt("flowers", "Flowers", "#d86a9a")] },
+  };
+  O.DECOR = { art: "Framed picture", clock: "Wall clock", poster: "Motto poster", shelf: "Wall shelf" };
+  O.styleDefaults = () => ({
+    floor: "wood", wall: "classic", wall_color: "#d8d1c0", desk: "wood", chair_color: "team", chair_shape: "office",
+    sofa: "blue", table: "wood", rug: "purple", plant: "leafy",
+    decor: { art: true, clock: true, poster: true, shelf: true }, motto: "Make today count",
+  });
+
   const IMG_PREFIX = ["data:image/png", "data:image/jpeg", "data:image/jpg", "data:image/webp", "data:image/svg+xml"];
   const FONT_PREFIX = ["data:font/", "data:application/font-woff", "data:application/x-font-ttf", "data:application/x-font-opentype", "data:application/octet-stream", "data:application/vnd.ms-fontobject"];
   const MAX_CHARS = 6000000;
@@ -34,8 +85,9 @@
   const validFont = (s) => typeof s === "string" && FONT_PREFIX.some((p) => s.startsWith(p)) && s.length <= MAX_CHARS;
 
   O.defaults = () => ({
-    brand_name: "", font_key: "georgia", logo: null, wall_texture: null, floor_texture: null, custom_font: null, custom_font_name: null,
+    brand_name: "", layout_preset: "classic", font_key: "georgia", logo: null, wall_texture: null, floor_texture: null, custom_font: null, custom_font_name: null,
     layout: { desks: {}, furniture: AT.clone(FURN_DEFAULT), plants: AT.clone(PLANTS_DEFAULT) },
+    style: O.styleDefaults(),
   });
 
   O.load = function () {
@@ -45,6 +97,10 @@
     Object.keys(d).forEach((k) => { if (o[k] === undefined) o[k] = d[k]; });
     if (!o.layout) o.layout = d.layout;
     ["desks", "furniture", "plants"].forEach((k) => { if (o.layout[k] === undefined) o.layout[k] = d.layout[k]; });
+    if (!o.style || typeof o.style !== "object") o.style = d.style;
+    Object.keys(d.style).forEach((k) => { if (o.style[k] === undefined) o.style[k] = d.style[k]; });
+    if (!o.style.decor || typeof o.style.decor !== "object") o.style.decor = d.style.decor;
+    Object.keys(d.style.decor).forEach((k) => { if (o.style.decor[k] === undefined) o.style.decor[k] = d.style.decor[k]; });
     return o;
   };
 
@@ -80,7 +136,7 @@
     const o = O.load(), L = o.layout;
     if (L.desks[agentId]) return L.desks[agentId];
     const a = AT.agents && AT.agents.get(agentId);
-    const slots = a && a.manager ? [O.MANAGER_SLOT].concat(O.DESK_SLOTS) : O.DESK_SLOTS;
+    const slots = slotsOf(presetOf(o), !!(a && a.manager));
     for (const s of slots) {
       if (O.deskFits(L, s[0], s[1])) { L.desks[agentId] = { x: s[0], y: s[1] }; AT.store.set("office", o); return L.desks[agentId]; }
     }
@@ -93,13 +149,30 @@
 
   /** The layout the "Reset" button restores, for the agents that exist right now. */
   O.defaultLayoutFor = function (ids) {
-    const L = { desks: {}, furniture: AT.clone(FURN_DEFAULT), plants: AT.clone(PLANTS_DEFAULT) };
-    ids.forEach((id) => {
+    return O.layoutForPreset(O.load().layout_preset, ids);
+  };
+
+  /** A full layout for a plan and a list of agent ids (managers get the manager desk first). */
+  O.layoutForPreset = function (key, ids) {
+    const P = O.PRESETS[key] || O.PRESETS.classic;
+    const L = { desks: {}, furniture: AT.clone(P.furniture), plants: AT.clone(P.plants) };
+    const mgrFirst = (ids || []).slice().sort((x, y) => { const ax = AT.agents && AT.agents.get(x), ay = AT.agents && AT.agents.get(y); return (ay && ay.manager ? 1 : 0) - (ax && ax.manager ? 1 : 0); });
+    mgrFirst.forEach((id) => {
       const a = AT.agents && AT.agents.get(id);
-      const slots = a && a.manager ? [O.MANAGER_SLOT].concat(O.DESK_SLOTS) : O.DESK_SLOTS;
-      for (const s of slots) { if (O.deskFits(L, s[0], s[1])) { L.desks[id] = { x: s[0], y: s[1] }; break; } }
+      for (const s of slotsOf(P, !!(a && a.manager))) { if (O.deskFits(L, s[0], s[1])) { L.desks[id] = { x: s[0], y: s[1] }; return; } }
+      for (let y = 1; y < O.GRID_H - 1; y++) for (let x = 1; x < O.GRID_W - 1; x++) { if (O.deskFits(L, x, y)) { L.desks[id] = { x, y }; return; } }
     });
     return L;
+  };
+
+  /** Switch to one of the ready-made plans: furniture, plants and desks are laid out afresh. */
+  O.applyPreset = function (key) {
+    if (!O.PRESETS[key]) return { error: "Unknown office plan." };
+    const o = O.load(), ids = AT.agents ? AT.agents.order() : [];
+    o.layout_preset = key;
+    o.layout = O.layoutForPreset(key, ids);
+    AT.store.set("office", o);
+    return { ok: true };
   };
 
   /** Called after load so every agent has a desk and no stale desk remains. */
@@ -123,6 +196,20 @@
       if (p.custom_font === "" || p.custom_font === null) { o.custom_font = null; o.custom_font_name = null; } else if (validFont(p.custom_font)) o.custom_font = p.custom_font;
     }
     if (p.custom_font_name !== undefined && p.custom_font_name !== null) o.custom_font_name = String(p.custom_font_name).trim().slice(0, 80) || null;
+    AT.store.set("office", o);
+    return O.view();
+  };
+
+  /** Save look-and-furniture choices. Unknown choices are ignored. */
+  O.saveStyle = function (p) {
+    p = p || {};
+    const o = O.load(), st = o.style;
+    Object.keys(O.STYLE_OPTIONS).forEach((k) => {
+      if (p[k] !== undefined && O.STYLE_OPTIONS[k].items.some((i) => i.key === p[k])) st[k] = p[k];
+    });
+    if (p.wall_color !== undefined && /^#[0-9a-fA-F]{6}$/.test(p.wall_color)) st.wall_color = p.wall_color;
+    if (p.decor && typeof p.decor === "object") Object.keys(O.DECOR).forEach((k) => { if (p.decor[k] !== undefined) st.decor[k] = !!p.decor[k]; });
+    if (p.motto !== undefined) st.motto = String(p.motto || "").trim().slice(0, 80);
     AT.store.set("office", o);
     return O.view();
   };
@@ -173,7 +260,9 @@
   /** What the page's drawing code reads. */
   O.view = function () {
     const o = O.load();
-    return Object.assign(AT.clone(o), { font_options: AT.clone(O.FONTS), default_layout: O.defaultLayoutFor(AT.agents ? AT.agents.order() : []) });
+    const presets = {};
+    O.PRESET_KEYS.forEach((k) => { const P = O.PRESETS[k]; presets[k] = { key: k, label: P.label, desc: P.desc, slots: [P.manager].concat(P.slots), furniture: AT.clone(P.furniture), plants: AT.clone(P.plants) }; });
+    return Object.assign(AT.clone(o), { font_options: AT.clone(O.FONTS), default_layout: O.defaultLayoutFor(AT.agents ? AT.agents.order() : []), presets, style_options: AT.clone(O.STYLE_OPTIONS), decor_options: AT.clone(O.DECOR) });
   };
 
   AT.office = O;
