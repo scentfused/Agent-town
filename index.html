@@ -1,0 +1,3050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Agent Town</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="./css/extra.css">
+<meta name="theme-color" content="#141126">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="icon" href="./icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Agent Town">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&family=Cormorant+Garamond:ital@1&family=Poppins:wght@600&family=Montserrat:wght@700&family=Bebas+Neue&family=Pacifico&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+<style>
+  :root {
+    --ink: #141126; --ink2: #1a1630; --ink3: #221d3c; --line: #2f2850;
+    --text: #ece6f5; --muted: #9a90b0; --brass: #e0b15a; --go: #2f9e5b;
+    --ui: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --serif: Georgia, "Palatino Linotype", "Iowan Old Style", serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--ink); color: var(--text); font-family: var(--ui); }
+  button { font-family: inherit; }
+  button:focus-visible, textarea:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+  #layout { display: flex; height: 100%; }
+  #stage { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  #topbar { display: flex; align-items: center; gap: 24px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--ink); }
+  .brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+  .brand .mark { align-self: center; width: 30px; height: 30px; border-radius: 9px; background: var(--brass); color: #2a1d08; display: grid; place-items: center; font: italic 700 19px var(--serif); }
+  .brand .word { font: italic 700 21px var(--serif); letter-spacing: .2px; }
+  .brand .sub { color: var(--muted); font-size: 13px; }
+  .legend { display: flex; gap: 16px; color: var(--muted); font-size: 12.5px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  #seg { display: inline-flex; background: var(--ink2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  #seg button { border: 0; background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  #seg button.on { background: var(--brass); color: #2a1d08; font-weight: 600; }
+  #seg button:disabled { opacity: .4; cursor: not-allowed; }
+
+  #views { position: relative; flex: 1; min-height: 0; }
+  #view-sims { position: absolute; inset: 0; }
+  #sims-canvas { width: 100%; height: 100%; display: block; }
+  #view-pixel { position: absolute; inset: 0; align-items: center; justify-content: center; overflow: auto; background: #0b0e14; }
+  #view-pixel canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+  #panel { flex: 0 0 390px; display: flex; flex-direction: column; background: var(--ink2); border-left: 1px solid var(--line); min-height: 0; }
+  #panel h2 { margin: 0; padding: 16px 18px 12px; font: italic 700 18px var(--serif); border-bottom: 1px solid var(--line); }
+  #log { flex: 1; overflow-y: auto; padding: 14px 16px 18px; }
+  #log-empty { color: var(--muted); font-size: 14px; line-height: 1.55; padding: 8px 2px; }
+  .entry { background: var(--ink3); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+  .entry .who { font-weight: 600; color: #f3e3bd; margin-bottom: 4px; }
+  .entry .task { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; font-style: italic; white-space: pre-wrap; max-height: 72px; overflow: hidden; }
+  .entry .body { white-space: pre-wrap; font-size: 14px; line-height: 1.55; }
+  .entry.status { color: #d9b56a; font-size: 13px; background: none; border: none; padding: 2px 0; margin-bottom: 6px; }
+  .entry.error { border-color: #c2546a; }
+  .entry.error .who { color: #f0899b; }
+  .entry.plan { border-color: var(--brass); }
+  .entry.plan .who { color: var(--brass); }
+  .entry.plan ul { margin: 6px 0 12px 18px; padding: 0; font-size: 14px; line-height: 1.5; }
+  .entry.plan li { margin-bottom: 6px; white-space: pre-wrap; }
+  .entry.action { border-color: #58a6ff; }
+  .entry .btnrow { display: flex; gap: 8px; }
+  .entry button { padding: 8px 13px; border-radius: 8px; border: 1px solid var(--line); background: #2a2448; color: var(--text); cursor: pointer; font-size: 13px; }
+  .entry button.ok { background: var(--go); border-color: #3cb371; color: #fff; }
+  .entry button:disabled { opacity: .5; cursor: default; }
+  .entry .note { color: var(--muted); font-size: 13px; }
+
+  #modal-bg { display: none; position: fixed; inset: 0; background: rgba(10,8,20,.7); align-items: center; justify-content: center; z-index: 10; }
+  #modal { background: var(--ink2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; width: min(580px, 92vw); box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+  #modal h3 { margin: 0 0 4px; font: italic 700 20px var(--serif); }
+  #modal .hint { color: var(--muted); font-size: 13.5px; line-height: 1.5; margin-bottom: 12px; }
+  #modal textarea { width: 100%; height: 170px; background: var(--ink); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 14.5px; font-family: inherit; line-height: 1.5; resize: vertical; }
+  #modal .row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+  #modal button { padding: 9px 18px; border-radius: 9px; border: 1px solid var(--line); background: #2a2448; color: var(--text); cursor: pointer; font-size: 14px; }
+  #modal button.primary { background: var(--brass); border-color: var(--brass); color: #2a1d08; font-weight: 600; }
+
+  .hr-open-btn { padding: 8px 16px; border-radius: 9px; border: 1px solid var(--line); background: var(--ink2); color: var(--text); font-size: 13px; cursor: pointer; }
+  .hr-open-btn:hover { border-color: var(--brass); color: #f3e3bd; }
+
+  #hr-bg { display: none; position: fixed; inset: 0; background: rgba(10,8,20,.78); z-index: 20; overflow-y: auto; }
+  #hr-panel { max-width: 980px; margin: 40px auto 60px; background: var(--ink2); border: 1px solid var(--line); border-radius: 16px; padding: 28px 32px 34px; box-shadow: 0 30px 70px rgba(0,0,0,.5); }
+  #hr-panel .hr-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  #hr-panel h2 { margin: 0; font: italic 700 26px var(--serif); }
+  #hr-panel .hr-sub { color: var(--muted); font-size: 14px; margin: 4px 0 0; max-width: 60ch; line-height: 1.5; }
+  #hr-close { background: transparent; border: 1px solid var(--line); color: var(--muted); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px; line-height: 1; }
+  #hr-close:hover { color: var(--text); border-color: var(--brass); }
+
+  .org-chart { margin: 26px 0 34px; }
+  .org-row { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .org-node { background: var(--ink3); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; font-size: 13px; text-align: center; cursor: pointer; transition: transform .12s; }
+  .org-node:hover { transform: translateY(-2px); }
+  .org-node .n-name { font-weight: 700; }
+  .org-node .n-title { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  .org-node.ceo { background: #2a2448; border-color: var(--brass); color: #f3e3bd; }
+  .org-connector { width: 1px; height: 22px; background: var(--line); margin: 0 auto; }
+  .org-fan { position: relative; height: 22px; margin: 0 auto; max-width: 640px; }
+  .org-fan::before { content: ""; position: absolute; left: 8%; right: 8%; top: 0; height: 1px; background: var(--line); }
+  .org-fan .stem { position: absolute; top: 0; width: 1px; height: 22px; background: var(--line); }
+
+  .hr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .hr-card { background: var(--ink3); border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .hr-card .hr-head { display: flex; flex-direction: column; gap: 8px; }
+  .hr-avatar-row { display: flex; align-items: center; gap: 10px; }
+  .hr-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 700 15px var(--ui); color: #0e0b18; flex: none; }
+  .hr-head .hr-reports { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .f-name { font-weight: 700; font-size: 14px; }
+  .hr-color-row { display: flex; align-items: center; gap: 10px; }
+  .hr-color-row input[type=color] { width: 34px; height: 30px; padding: 2px; border-radius: 7px; border: 1px solid var(--line); background: var(--ink); cursor: pointer; }
+  .hr-color-hex { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+  .hr-card label { font-size: 11px; text-transform: none; color: var(--muted); display: block; margin-bottom: 3px; }
+  .hr-card input[type=text] { width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: 7px; color: var(--text); padding: 7px 9px; font-size: 13px; font-family: inherit; }
+  .hr-card select { width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: 7px; color: var(--text); padding: 7px 9px; font-size: 13px; font-family: inherit; }
+  .hr-skills { display: flex; flex-direction: column; gap: 6px; }
+  .hr-skill-row { display: flex; gap: 6px; }
+  .hr-skill-row input { flex: 1; }
+  .hr-skill-row button { flex: none; width: 28px; border-radius: 7px; border: 1px solid var(--line); background: var(--ink); color: var(--muted); cursor: pointer; }
+  .hr-skill-row button:hover { color: #f0899b; border-color: #c2546a; }
+  .hr-add-skill { align-self: flex-start; background: none; border: 1px dashed var(--line); color: var(--muted); border-radius: 7px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
+  .hr-add-skill:hover { color: var(--brass); border-color: var(--brass); }
+  .hr-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 2px; }
+  .hr-foot .hr-note { color: var(--muted); font-size: 12px; margin-right: auto; }
+  .hr-save { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--brass); background: var(--brass); color: #2a1d08; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+  .hr-save:disabled { opacity: .45; cursor: default; background: var(--ink); color: var(--muted); border-color: var(--line); }
+
+  .hr-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+  .hr-tabs button { background: none; border: none; color: var(--muted); padding: 9px 4px; margin-right: 20px; font-size: 13.5px; cursor: pointer; border-bottom: 2px solid transparent; }
+  .hr-tabs button.on { color: #f3e3bd; border-bottom-color: var(--brass); font-weight: 600; }
+  .hr-tab-panel { min-height: 120px; }
+
+  .brand-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 760px; }
+  .brand-field { display: flex; flex-direction: column; gap: 6px; }
+  .brand-field.full { grid-column: 1 / -1; }
+  .brand-field label { font-size: 12px; color: var(--muted); }
+  .brand-field input[type=text], .brand-field select { background: var(--ink); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 9px 11px; font-size: 14px; font-family: inherit; }
+  .upload-row { display: flex; align-items: center; gap: 12px; }
+  .upload-preview { width: 64px; height: 64px; border-radius: 10px; border: 1px solid var(--line); background: var(--ink); display: flex; align-items: center; justify-content: center; overflow: hidden; flex: none; color: var(--muted); font-size: 11px; text-align: center; }
+  .upload-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .upload-preview.wide { width: 100px; }
+  .upload-btns { display: flex; flex-direction: column; gap: 6px; }
+  .upload-btns .pick { background: var(--ink3); border: 1px solid var(--line); color: var(--text); border-radius: 7px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
+  .upload-btns .clear { background: none; border: none; color: var(--muted); font-size: 11.5px; cursor: pointer; text-decoration: underline; text-align: left; padding: 0; }
+  .file-types-note { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .brand-foot { display: flex; align-items: center; gap: 12px; margin-top: 22px; }
+
+  .layout-wrap { max-width: 720px; }
+  .layout-help { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 14px; max-width: 60ch; }
+  .layout-grid { position: relative; background: #cba36c; border: 3px solid #6b4a2f; border-radius: 4px; display: grid; }
+  .layout-cell { border: 1px solid rgba(92,60,30,0.22); }
+  .layout-item { position: absolute; border-radius: 4px; display: flex; align-items: center; justify-content: center; font: 700 10px system-ui, sans-serif; color: #0e0b18; cursor: pointer; border: 2px solid rgba(0,0,0,0.25); box-sizing: border-box; user-select: none; }
+  .layout-item.selected { outline: 3px solid #fff; outline-offset: 1px; z-index: 2; }
+  .layout-item.furniture { opacity: 0.88; font-size: 8.5px; }
+  .layout-status { margin-top: 10px; font-size: 12.5px; color: var(--muted); min-height: 18px; }
+  .layout-status.bad { color: #f0899b; }
+  .layout-foot { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  .layout-reset { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 7px; padding: 8px 14px; font-size: 12.5px; cursor: pointer; }
+
+  @media (max-width: 900px) {
+    #layout { flex-direction: column; }
+    #panel { flex: 0 0 42%; border-left: 0; border-top: 1px solid var(--line); }
+    .legend { display: none; }
+    #topbar { padding: 10px 14px; gap: 10px; flex-wrap: wrap; padding-top: max(10px, env(safe-area-inset-top)); }
+    .brand .sub { display: none; }
+    #seg button { padding: 6px 10px; font-size: 12.5px; }
+    .hr-open-btn { padding: 7px 12px; }
+    #hr-panel { margin: 0; border-radius: 0; padding: 20px 16px 28px; min-height: 100dvh; }
+  }
+
+  /* ---------- Chats: floating heads + chat window ---------- */
+  html, body { height: 100%; height: 100dvh; overflow: hidden; }
+  #dock { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 8;
+          display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-height: calc(100dvh - 90px); }
+  #dock-toggle { background: var(--ink2); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+  #dock-toggle:hover { border-color: var(--brass); }
+  #dock-heads { display: flex; flex-direction: column; align-items: center; gap: 9px; overflow-y: auto; padding: 4px 2px; scrollbar-width: none; }
+  #dock-heads::-webkit-scrollbar { display: none; }
+  #dock.collapsed #dock-heads { display: none; }
+  .dock-sep { width: 26px; height: 1px; background: var(--line); margin: 1px 0; flex: none; }
+  .head { position: relative; flex: none; width: 54px; background: none; border: 0; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); }
+  .head .face { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 700 15px var(--ui); color: #0e0b18;
+                border: 2px solid rgba(255,255,255,.18); box-shadow: 0 6px 16px rgba(0,0,0,.45); transition: transform .12s; }
+  .head:hover .face { transform: scale(1.07); }
+  .head.on .face { border-color: var(--brass); box-shadow: 0 0 0 2px var(--brass), 0 6px 16px rgba(0,0,0,.45); }
+  .head.grp .face { border-radius: 14px; }
+  .head.add .face { background: var(--ink2); color: var(--brass); border: 1px dashed var(--brass); font-size: 22px; font-weight: 400; }
+  .head .cap { font-size: 10px; line-height: 1.1; max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 3px #000; color: #d8d0ea; }
+  .head .badge { position: absolute; top: -3px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e5484d; color: #fff; font: 700 11px/18px var(--ui); text-align: center; border: 2px solid var(--ink); }
+  .head.working .face { animation: pulse 1.3s ease-in-out infinite; border-color: #38bdf8; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(56,189,248,.55), 0 6px 16px rgba(0,0,0,.45); } 50% { box-shadow: 0 0 0 7px rgba(56,189,248,0), 0 6px 16px rgba(0,0,0,.45); } }
+
+  #chatwin { display: none; position: fixed; right: calc(max(12px, env(safe-area-inset-right)) + 70px); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 9;
+             width: 390px; height: min(580px, calc(100dvh - 28px)); background: var(--ink2); border: 1px solid var(--line); border-radius: 16px;
+             box-shadow: 0 24px 60px rgba(0,0,0,.55); flex-direction: column; overflow: hidden; }
+  #chatwin.on { display: flex; }
+  #cw-head { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-bottom: 1px solid var(--line); background: var(--ink3); flex: none; }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 700 14px var(--ui); color: #0e0b18; flex: none; }
+  #cw-titles { flex: 1; min-width: 0; }
+  #cw-title { font: italic 700 17px var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #cw-sub { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cw-btn { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; flex: none; }
+  .cw-btn:hover { color: var(--text); border-color: var(--brass); }
+  .cw-btn.danger { color: #fff; background: #c2546a; border-color: #c2546a; }
+  #cw-close { font-size: 20px; line-height: 1; padding: 3px 11px; }
+  #cw-msgs { flex: 1; overflow-y: auto; padding: 14px 12px 8px; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
+  #cw-msgs .empty { color: var(--muted); font-size: 13.5px; line-height: 1.55; padding: 6px 4px; text-align: center; }
+  .m { display: flex; flex-direction: column; max-width: 88%; }
+  .m.me { align-self: flex-end; align-items: flex-end; }
+  .m.them { align-self: flex-start; align-items: flex-start; }
+  .m .bub { padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .m.me .bub { background: var(--brass); color: #2a1d08; border-bottom-right-radius: 4px; }
+  .m.them .bub { background: var(--ink3); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .m.err .bub { border-color: #c2546a; }
+  .m.err .m-who { color: #f0899b; }
+  .m-who { font-size: 11.5px; font-weight: 700; margin: 0 4px 3px; color: #f3e3bd; }
+  .m-tag { font-size: 11px; color: var(--muted); margin: 0 4px 3px; font-style: italic; }
+  .m-time { font-size: 10.5px; color: var(--muted); margin: 3px 5px 0; }
+  .plan-card { background: var(--ink3); border: 1px solid var(--brass); border-radius: 12px; padding: 11px 13px; font-size: 13.5px; }
+  .plan-card ul { margin: 6px 0 10px 18px; padding: 0; line-height: 1.5; }
+  .plan-card li { margin-bottom: 5px; white-space: pre-wrap; }
+  .plan-card .btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+  .plan-card button { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: #2a2448; color: var(--text); cursor: pointer; font-size: 13px; }
+  .plan-card button.ok { background: var(--go); border-color: #3cb371; color: #fff; }
+  .plan-card button:disabled { opacity: .5; cursor: default; }
+  .plan-card .note { color: var(--muted); font-size: 12.5px; }
+  #cw-typing { min-height: 0; padding: 0 14px; color: #d9b56a; font-size: 12.5px; flex: none; }
+  #cw-typing:not(:empty) { padding: 5px 14px 7px; }
+  .dots { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 4px; }
+  .dots i { width: 5px; height: 5px; border-radius: 50%; background: #d9b56a; animation: blink 1.2s infinite both; }
+  .dots i:nth-child(2) { animation-delay: .2s; } .dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%,80%,100% { opacity: .25; } 40% { opacity: 1; } }
+  #cw-compose { display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--ink3); align-items: flex-end; flex: none; }
+  #cw-input { flex: 1; min-width: 0; resize: none; background: var(--ink); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font: 14.5px/1.4 var(--ui); max-height: 130px; }
+  #cw-input:disabled { opacity: .6; }
+  #cw-send { background: var(--brass); color: #2a1d08; border: 0; border-radius: 12px; padding: 10px 16px; font-weight: 700; font-size: 14px; cursor: pointer; flex: none; }
+  #cw-send:disabled { opacity: .45; cursor: default; }
+  #cw-toast { position: absolute; left: 12px; right: 12px; bottom: 74px; background: #c2546a; color: #fff; padding: 9px 12px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  #cw-toast.on { opacity: 1; }
+
+  #grp-bg { display: none; position: fixed; inset: 0; background: rgba(10,8,20,.72); align-items: center; justify-content: center; z-index: 30; }
+  #grp-modal { background: var(--ink2); border: 1px solid var(--line); border-radius: 14px; padding: 20px; width: min(420px, 92vw); max-height: 90dvh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+  #grp-modal h3 { margin: 0 0 4px; font: italic 700 20px var(--serif); }
+  #grp-modal .hint { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 12px; }
+  #grp-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .grp-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--ink3); cursor: pointer; }
+  .grp-row:has(input:checked) { border-color: var(--brass); }
+  .grp-row small { display: block; color: var(--muted); font-size: 11.5px; }
+  .face.sm { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 700 12px var(--ui); color: #0e0b18; flex: none; }
+  #grp-title { width: 100%; background: var(--ink); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; font-size: 14px; font-family: inherit; }
+  #grp-modal .row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+  #grp-modal button { padding: 9px 16px; border-radius: 9px; border: 1px solid var(--line); background: #2a2448; color: var(--text); cursor: pointer; font-size: 14px; }
+  #grp-modal button.primary { background: var(--brass); border-color: var(--brass); color: #2a1d08; font-weight: 600; }
+  #grp-modal button:disabled { opacity: .45; cursor: default; }
+
+  @media (max-width: 700px) {
+    #chatwin { right: 0; left: 0; bottom: 0; top: 0; width: auto; height: 100dvh; border-radius: 0; border: 0; padding-top: env(safe-area-inset-top); }
+    body.chat-open #dock { display: none; }
+    .m { max-width: 92%; }
+    .m .bub, #cw-input { font-size: 15px; }
+  }
+.imgb{padding:6px!important}.gen-img{display:block;max-width:100%;border-radius:8px}.img-cap{font-size:11px;opacity:.7;margin-top:4px}
+
+  /* ---------- welcome tour ---------- */
+  .help-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--ink2); color: var(--brass); font-size: 16px; font-weight: 700; cursor: pointer; flex: none; }
+  .help-btn:hover { border-color: var(--brass); }
+  #tour { position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(10,8,22,.78); }
+  #tour.on { display: flex; }
+  #tour .card { width: 100%; max-width: 460px; max-height: calc(100dvh - 32px); overflow: auto; background: var(--ink2); border: 1px solid var(--line); border-radius: 16px; padding: 22px 20px 16px; box-shadow: 0 18px 60px rgba(0,0,0,.5); color: var(--text); font-family: var(--ui); }
+  #tour .step-n { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass); margin-bottom: 6px; }
+  #tour h2 { margin: 0 0 8px; font-family: var(--serif); font-style: italic; font-size: 22px; font-weight: 600; }
+  #tour p { margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #d6cfe6; }
+  #tour ul { margin: 0 0 10px; padding: 0; list-style: none; display: grid; gap: 7px; }
+  #tour li { font-size: 13px; line-height: 1.4; color: #d6cfe6; display: flex; gap: 9px; align-items: flex-start; }
+  #tour li i { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; }
+  #tour li b { color: var(--text); }
+  #tour .tip { font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--brass); padding-left: 10px; margin-top: 4px; }
+  #tour .nav { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+  #tour .dots { display: flex; gap: 5px; flex: 1; }
+  #tour .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+  #tour .dots span.on { background: var(--brass); }
+  #tour button.t { padding: 9px 16px; border-radius: 9px; border: 1px solid var(--line); background: var(--ink3); color: var(--text); font-size: 13px; cursor: pointer; }
+  #tour button.t.go { background: var(--brass); border-color: var(--brass); color: #2a2008; font-weight: 700; }
+  #tour button.skip { background: none; border: 0; color: var(--muted); font-size: 12px; cursor: pointer; padding: 6px; }
+</style>
+</head>
+<body>
+<div id="banners"></div>
+<div id="layout">
+  <main id="stage">
+    <header id="topbar">
+      <div class="brand"><span class="mark">A</span><span class="word">Your Company</span><span class="sub">Agent Town</span></div>
+      <div class="legend" aria-label="What the coloured markers mean">
+        <span><i style="background:#4ade80"></i>Free</span>
+        <span><i style="background:#38bdf8"></i>Working</span>
+        <span><i style="background:#fbbf24"></i>Report ready</span>
+        <span><i style="background:#fb923c"></i>Needs your OK</span>
+      </div>
+      <div id="seg" role="group" aria-label="Choose a view">
+        <button data-view="sims" class="on">Sims view</button>
+        <button data-view="pixel">Pixel view</button>
+      </div>
+      <button id="tour-open" class="help-btn" title="How Agent Town works" aria-label="How Agent Town works">?</button>
+      <button id="hr-open" class="hr-open-btn" title="Team, branding and office layout">Dashboard</button>
+    </header>
+    <div id="views">
+      <div id="view-sims"><canvas id="sims-canvas" aria-label="Your office. Click an agent to give them a task."></canvas></div>
+      <div id="view-pixel" style="display:none"></div>
+    </div>
+  </main>
+</div>
+
+<div id="hr-bg">
+  <div id="hr-panel">
+    <div class="hr-top">
+      <div>
+        <h2>Office Dashboard</h2>
+        <p class="hr-sub">Your team, your AI connections, your branding and the office itself &mdash; edit and save here.</p>
+      </div>
+      <button id="hr-close" aria-label="Close">&times;</button>
+    </div>
+    <div id="hr-tabs" class="hr-tabs" role="tablist">
+      <button data-tab="team" class="on">Team</button>
+      <button data-tab="branding">Branding &amp; interior</button>
+      <button data-tab="layout">Office layout</button>
+      <button data-tab="connections">AI connections</button>
+      <button data-tab="company">Company notes</button>
+      <button data-tab="data">Backup &amp; data</button>
+    </div>
+    <div id="tab-team" class="hr-tab-panel">
+      <div class="org-chart" id="org-chart"></div>
+      <div class="hr-grid" id="hr-grid"></div>
+    </div>
+    <div id="tab-branding" class="hr-tab-panel" style="display:none"></div>
+    <div id="tab-layout" class="hr-tab-panel" style="display:none"></div>
+    <div id="tab-connections" class="hr-tab-panel" style="display:none"></div>
+    <div id="tab-company" class="hr-tab-panel" style="display:none"></div>
+    <div id="tab-data" class="hr-tab-panel" style="display:none"></div>
+  </div>
+</div>
+
+<script src="./js/core.js"></script>
+<script src="./js/providers.js"></script>
+<script src="./js/agents.js"></script>
+<script src="./js/office.js"></script>
+<script src="./js/chats.js"></script>
+<script src="./js/data.js"></script>
+<script src="./js/runtime.js"></script>
+<script src="./js/local-api.js"></script>
+<script>
+const AGENTS = {};
+const PIXEL_SLOTS = [[180, 172], [78, 118], [282, 118], [78, 222], [282, 222], [180, 272], [78, 170], [282, 170], [130, 272], [230, 272]];
+function hexNum(h) { const n = parseInt(String(h || "").replace("#", ""), 16); return isFinite(n) ? n : 0x888888; }
+function darkHex(h, f) {
+  const n = hexNum(h), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (Math.round(r * f) << 16) | (Math.round(g * f) << 8) | Math.round(b * f);
+}
+// Rebuilds AGENTS (used by the pixel view and the guided tour) from the team the user has made.
+function syncAgents(team) {
+  Object.keys(AGENTS).forEach(k => delete AGENTS[k]);
+  if (!team) return;
+  let n = 1;
+  (team.order || []).forEach(id => {
+    const t = team.agents[id]; if (!t) return;
+    const slot = PIXEL_SLOTS[t.manager ? 0 : Math.min(n++, PIXEL_SLOTS.length - 1)];
+    const look = t.look || {};
+    AGENTS[id] = {
+      name: t.name, role: t.designation, x: slot[0], y: slot[1],
+      hair: hexNum(look.hair || "#3b2a1e"), shirt: hexNum(t.color), dark: darkHex(t.color, 0.72),
+      tie: look.tie ? hexNum(look.tie) : undefined, hint: t.hint || "",
+    };
+  });
+}
+function managerId() { return (window.TEAM && window.TEAM.manager) || null; }
+
+/* ------------------------------------------------------------------ */
+/*  Views: the Sims world and the pixel office both listen to the same */
+/*  events, so switching between them never loses track of anything.   */
+/* ------------------------------------------------------------------ */
+const views = {
+  list: {}, states: {},
+  register(v) { this.list[v.name] = v; },
+  each(fn) { Object.values(this.list).forEach(v => { try { fn(v); } catch (e) { console.error(e); } }); },
+  setState(id, s) { this.states[id] = s; this.each(v => v.setState && v.setState(id, s)); },
+  plan(msg) { this.each(v => v.plan && v.plan(msg)); },
+  assigned(ids) { this.each(v => v.assigned && v.assigned(ids)); },
+  attention(on) { this.each(v => v.attention && v.attention(on)); },
+  show(name) {
+    if (!this.list[name]) return;
+    Object.values(this.list).forEach(v => {
+      const on = v.name === name;
+      v.el.style.display = on ? (v.display || "block") : "none";
+      try { if (on) { v.activate && v.activate(); } else { v.deactivate && v.deactivate(); } } catch (e) { console.error(e); }
+    });
+    document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", b.dataset.view === name));
+    try { localStorage.setItem("agentTownView", name); } catch (e) {}
+  },
+  init() {
+    document.querySelectorAll("#seg button").forEach(b => {
+      if (!this.list[b.dataset.view]) { b.disabled = true; b.title = "This view could not load (no internet connection to the graphics library?)"; }
+      b.onclick = () => this.show(b.dataset.view);
+    });
+    let saved = null; try { saved = localStorage.getItem("agentTownView"); } catch (e) {}
+    this.show(this.list[saved] ? saved : "sims");
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Branding: header wordmark + logo track whatever the Office          */
+/*  dashboard has saved. Safe to call repeatedly (e.g. after a save).   */
+/* ------------------------------------------------------------------ */
+function applyBranding(office) {
+  if (!office) return;
+  const name = office.brand_name || "Your Company";
+  const wordEl = document.querySelector(".brand .word");
+  if (wordEl) {
+    wordEl.textContent = name;
+    const f = (typeof SimsDraw !== "undefined" && SimsDraw.FONTS && SimsDraw.FONTS[office.font_key]) || null;
+    if (f) { wordEl.style.fontFamily = f.family; wordEl.style.fontStyle = f.style; }
+  }
+  const markEl = document.querySelector(".brand .mark");
+  if (markEl) {
+    if (office.logo) {
+      markEl.style.background = "transparent"; markEl.textContent = "";
+      let img = markEl.querySelector("img");
+      if (!img) { img = document.createElement("img"); img.alt = "logo"; img.style.cssText = "width:100%;height:100%;object-fit:contain;border-radius:8px;"; markEl.appendChild(img); }
+      img.src = office.logo;
+    } else {
+      markEl.innerHTML = ""; markEl.style.background = "";
+      markEl.textContent = name.charAt(0).toUpperCase();
+    }
+  }
+  document.title = name + " – Agent Town";
+}
+window.applyBranding = applyBranding;
+
+/* ------------------------------------------------------------------ */
+/*  Chats: every agent has their own chat (like Messenger), and you can  */
+/*  make group chats where several agents take turns on the same job.    */
+/* ------------------------------------------------------------------ */
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+const running = {};        // agentId -> number of tasks currently running
+const groups = {};         // approved delegation batches
+const taskToGroup = {};
+let groupSeq = 0;
+
+const COMPILE_TASK =
+  "The assignments you delegated have now finished. Their results are in the team activity log below. " +
+  "Compile them into one executive summary for me: what each department delivered, how it lines up with our targets, " +
+  "any issues or risks, and the decisions you need from me. Do not include a JSON assignments block.";
+
+function agentName(id) {
+  const t = window.TEAM && window.TEAM.agents && window.TEAM.agents[id];
+  return (t && t.name) || (AGENTS[id] ? AGENTS[id].name : id);
+}
+function agentTitle(id) {
+  const t = window.TEAM && window.TEAM.agents && window.TEAM.agents[id];
+  return (t && t.designation) || (AGENTS[id] ? AGENTS[id].role : "");
+}
+function agentColor(id) {
+  const t = window.TEAM && window.TEAM.agents && window.TEAM.agents[id];
+  if (t && /^#[0-9a-f]{6}$/i.test(t.color || "")) return t.color;
+  const a = AGENTS[id];
+  return a ? "#" + a.shirt.toString(16).padStart(6, "0") : "#9a90b0";
+}
+
+const chatState = {
+  chats: {}, order: [], busy: new Set(), typing: {}, open: null,
+  seen: {}, compile: false, firstLoad: true, ui: null, confirmDelete: false,
+};
+try { chatState.seen = JSON.parse(localStorage.getItem("atSeen") || "{}") || {}; } catch (e) {}
+function saveSeen() { try { localStorage.setItem("atSeen", JSON.stringify(chatState.seen)); } catch (e) {} }
+
+async function chatFetch(url, body, method) {
+  let res;
+  try {
+    res = await fetch(url, {
+      method: method || (body ? "POST" : "GET"), credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) { return { error: "Can't reach the server. Check your connection." }; }
+  try { return await res.json(); } catch (e) { return { error: `Server error (${res.status})` }; }
+}
+
+function chatTitle(chat) {
+  if (chat.type === "agent") return agentName(chat.agents[0]);
+  return chat.title || chat.agents.map(agentName).join(", ");
+}
+function chatSubtitle(chat) {
+  if (chat.type === "agent") return agentTitle(chat.agents[0]);
+  return chat.agents.map(agentName).join(" · ") + " — take turns";
+}
+function initialsOf(s) { return (s || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase(); }
+
+function lastTs(chat) { const m = chat.messages; return m.length ? m[m.length - 1].ts : 0; }
+function unreadCount(chat) {
+  if (chatState.open === chat.id && !document.hidden) return 0;
+  const seen = chatState.seen[chat.id] || 0;
+  return chat.messages.filter(m => m.role === "agent" && m.ts > seen).length;
+}
+function markSeen(chat) { chatState.seen[chat.id] = Math.max(lastTs(chat), chatState.seen[chat.id] || 0); saveSeen(); }
+
+function isWorking(chat) {
+  const t = chatState.typing[chat.id];
+  if (t && Object.keys(t).length) return true;
+  if (chat.type === "group") return chatState.busy.has(chat.id);
+  return (running[chat.agents[0]] || 0) > 0;
+}
+
+/* ---------- building the interface (once) ---------- */
+function buildChatUI() {
+  if (chatState.ui) return;
+  const dock = document.createElement("div");
+  dock.id = "dock";
+  dock.innerHTML = `<button id="dock-toggle" title="Show or hide chats" aria-label="Show or hide chats">Chats</button><div id="dock-heads"></div>`;
+  document.body.appendChild(dock);
+
+  const win = document.createElement("div");
+  win.id = "chatwin";
+  win.innerHTML = `
+    <div id="cw-head">
+      <div id="cw-avatar" class="avatar"></div>
+      <div id="cw-titles"><div id="cw-title"></div><div id="cw-sub"></div></div>
+      <button id="cw-del" class="cw-btn" style="display:none">Delete group</button>
+      <button id="cw-close" class="cw-btn" aria-label="Close chat">&times;</button>
+    </div>
+    <div id="cw-msgs"></div>
+    <div id="cw-typing"></div>
+    <div id="cw-compose">
+      <textarea id="cw-input" rows="1" placeholder="Type a message..."></textarea>
+      <button id="cw-send" aria-label="Send">Send</button>
+    </div>
+    <div id="cw-toast"></div>`;
+  document.body.appendChild(win);
+
+  const gm = document.createElement("div");
+  gm.id = "grp-bg";
+  gm.innerHTML = `
+    <div id="grp-modal" role="dialog" aria-modal="true">
+      <h3>New group chat</h3>
+      <div class="hint">Pick two or more agents to work on the same job. They take turns, and each one sees what the others said.</div>
+      <div id="grp-list"></div>
+      <input id="grp-title" type="text" maxlength="60" placeholder="Group name (optional)">
+      <div class="row"><button id="grp-cancel">Cancel</button><button id="grp-create" class="primary" disabled>Create group</button></div>
+    </div>`;
+  document.body.appendChild(gm);
+
+  chatState.ui = {
+    dock, heads: dock.querySelector("#dock-heads"), win,
+    avatar: win.querySelector("#cw-avatar"), title: win.querySelector("#cw-title"), sub: win.querySelector("#cw-sub"),
+    del: win.querySelector("#cw-del"), msgs: win.querySelector("#cw-msgs"), typing: win.querySelector("#cw-typing"),
+    input: win.querySelector("#cw-input"), send: win.querySelector("#cw-send"), toast: win.querySelector("#cw-toast"),
+    gm, gmList: gm.querySelector("#grp-list"), gmTitle: gm.querySelector("#grp-title"), gmCreate: gm.querySelector("#grp-create"),
+  };
+  const ui = chatState.ui;
+
+  let collapsed = false;
+  try { collapsed = localStorage.getItem("atDockCollapsed") === "1"; } catch (e) {}
+  dock.classList.toggle("collapsed", collapsed);
+  dock.querySelector("#dock-toggle").onclick = () => {
+    dock.classList.toggle("collapsed");
+    try { localStorage.setItem("atDockCollapsed", dock.classList.contains("collapsed") ? "1" : "0"); } catch (e) {}
+  };
+
+  win.querySelector("#cw-close").onclick = closeChat;
+  ui.del.onclick = onDeleteClick;
+  ui.send.onclick = sendChat;
+  ui.input.addEventListener("input", autosize);
+  ui.input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); sendChat(); }
+    else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendChat(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { if (ui.gm.style.display === "flex") closeGroupModal(); else if (chatState.open) closeChat(); }
+  });
+  ui.msgs.addEventListener("click", onMsgClick);
+
+  gm.addEventListener("mousedown", (e) => { if (e.target === gm) closeGroupModal(); });
+  gm.querySelector("#grp-cancel").onclick = closeGroupModal;
+  ui.gmCreate.onclick = createGroup;
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) { chatReload(); if (chatState.open) { const c = chatState.chats[chatState.open]; if (c) { markSeen(c); renderDock(); } } }
+  });
+}
+
+function autosize() {
+  const t = chatState.ui.input;
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight, 130) + "px";
+}
+
+function toast(text) {
+  const el = chatState.ui.toast;
+  el.textContent = text; el.classList.add("on");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("on"), 4500);
+}
+
+/* ---------- dock (the floating chat heads) ---------- */
+function headHtml(chat) {
+  const n = unreadCount(chat);
+  const omarCompile = chat.id === "agent-" + managerId() && chatState.compile;
+  const badge = n > 0 ? `<span class="badge">${n > 9 ? "9+" : n}</span>` : (omarCompile ? `<span class="badge">!</span>` : "");
+  const working = isWorking(chat) ? " working" : "";
+  const on = chatState.open === chat.id ? " on" : "";
+  let face, color;
+  if (chat.type === "agent") {
+    color = agentColor(chat.agents[0]);
+    face = `<span>${escapeHtml(initialsOf(agentName(chat.agents[0])))}</span>`;
+  } else {
+    color = "#8b7fc7";
+    face = `<span>${escapeHtml(initialsOf(chat.title || chat.agents.map(agentName).join(" ")))}</span>`;
+  }
+  const label = chatTitle(chat);
+  return `<button class="head${working}${on}${chat.type === "group" ? " grp" : ""}" data-chat="${escapeHtml(chat.id)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">` +
+         `<span class="face" style="background:${color}">${face}</span>${badge}<span class="cap">${escapeHtml(label.length > 9 ? label.slice(0, 8) + "…" : label)}</span></button>`;
+}
+
+function renderDock() {
+  const ui = chatState.ui; if (!ui) return;
+  const chats = chatState.order.map(id => chatState.chats[id]).filter(Boolean);
+  const singles = chats.filter(c => c.type === "agent");
+  const grps = chats.filter(c => c.type === "group");
+  ui.heads.innerHTML =
+    singles.map(headHtml).join("") +
+    `<div class="dock-sep"></div>` +
+    grps.map(headHtml).join("") +
+    `<button class="head add" id="dock-add" title="New group chat" aria-label="New group chat"><span class="face">+</span><span class="cap">Group</span></button>`;
+  ui.heads.querySelectorAll(".head[data-chat]").forEach(b => { b.onclick = () => openChat(b.dataset.chat); });
+  const add = ui.heads.querySelector("#dock-add"); if (add) add.onclick = openGroupModal;
+  const total = chats.reduce((n, c) => n + unreadCount(c), 0);
+  const tg = ui.dock.querySelector("#dock-toggle");
+  tg.textContent = total > 0 ? `Chats (${total})` : "Chats";
+}
+
+/* ---------- chat window ---------- */
+function openChat(id, fromHistory) {
+  if (!chatState.chats[id]) return;
+  // Phone Back button: opening a chat adds a history step, so Back closes the
+  // chat (and stays in the app) instead of leaving the app.
+  if (!fromHistory) {
+    try {
+      const st = history.state || {};
+      if (st.chat || st.gm) history.replaceState({ chat: id }, "");
+      else history.pushState({ chat: id }, "");
+    } catch (e) {}
+  }
+  chatState.open = id; chatState.confirmDelete = false;
+  const chat = chatState.chats[id];
+  markSeen(chat);
+  document.body.classList.add("chat-open");
+  chatState.ui.win.classList.add("on");
+  renderWindow(true);
+  renderDock();
+  if (window.matchMedia("(pointer: fine)").matches) setTimeout(() => chatState.ui.input.focus(), 30);
+}
+function closeChat() {
+  // Go back one step in history; the popstate handler then hides the window.
+  if (history.state && history.state.chat) { history.back(); return; }
+  hideChat();
+}
+function hideChat() {
+  chatState.open = null;
+  document.body.classList.remove("chat-open");
+  chatState.ui.win.classList.remove("on");
+  renderDock();
+}
+
+function planCardHtml(m) {
+  const items = (m.assignments || []).map(a =>
+    `<li><b>${escapeHtml(agentName(a.agent))}</b>: ${escapeHtml(a.task)}</li>`).join("");
+  let foot;
+  if (m.status === "pending") {
+    foot = `<div class="btnrow"><button class="ok plan-ok" data-mid="${m.id}">Approve and assign to team</button><button class="no plan-no" data-mid="${m.id}">Dismiss</button></div>`;
+  } else if (m.status === "approved") {
+    foot = `<div class="note">Approved. ${m.count != null ? m.count : "The"} task(s) assigned — each agent got theirs in their own chat.</div>`;
+  } else {
+    foot = `<div class="note">Dismissed. Nothing was assigned.</div>`;
+  }
+  return `<div class="m them"><div class="plan-card"><div class="m-who">${escapeHtml(agentName(managerId() || m.agent_id))}'s proposed assignments${m.status === "pending" ? ", waiting for your approval" : ""}</div><ul>${items}</ul>${foot}</div></div>`;
+}
+
+function msgHtml(chat, m) {
+  const t = new Date(m.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (m.role === "user") {
+    const tag = m.from_plan ? `<div class="m-tag">Assigned from ${escapeHtml(agentName(managerId()))}'s plan</div>` : "";
+    return `<div class="m me">${tag}<div class="bub">${escapeHtml(m.text)}</div><div class="m-time">${t}</div></div>`;
+  }
+  if (m.kind === "plan") return planCardHtml(m);
+  if (m.kind === "image") {
+    const w = chat.type === "group" ? `<div class="m-who" style="color:${agentColor(m.agent_id)}">${escapeHtml(agentName(m.agent_id))}</div>` : "";
+    return `<div class="m them">${w}<div class="bub imgb"><a class="img-link" data-img="${escapeHtml(m.image_id || "")}" href="#" target="_blank" rel="noopener"><img class="gen-img" data-img="${escapeHtml(m.image_id || "")}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Design image"></a><div class="img-cap">${escapeHtml((m.text||"").slice(0,160))}</div></div><div class="m-time">${t}</div></div>`;
+  }
+  const who = chat.type === "group"
+    ? `<div class="m-who" style="color:${agentColor(m.agent_id)}">${escapeHtml(agentName(m.agent_id))}</div>` : "";
+  const cls = m.kind === "error" ? " err" : "";
+  const prefix = m.kind === "error" ? `<div class="m-who">${escapeHtml(agentName(m.agent_id))} hit a problem</div>` : who;
+  return `<div class="m them${cls}">${prefix}<div class="bub">${escapeHtml(m.text)}</div><div class="m-time">${t}</div></div>`;
+}
+
+const imgCache = {};
+async function hydrateImages(root) {
+  const imgs = root.querySelectorAll("img.gen-img[data-img]");
+  for (const im of imgs) {
+    const id = im.dataset.img; if (!id) continue;
+    try {
+      if (!imgCache[id]) { const r = await fetch("/api/images/" + id); const d = await r.json(); imgCache[id] = d.data_url || ""; }
+      if (imgCache[id]) { im.src = imgCache[id]; const a = im.closest("a"); if (a) a.href = imgCache[id]; }
+    } catch (e) { /* leave the placeholder */ }
+  }
+}
+
+function renderWindow(forceBottom) {
+  const ui = chatState.ui;
+  const chat = chatState.chats[chatState.open];
+  if (!chat) return;
+  // header
+  ui.title.textContent = chatTitle(chat);
+  ui.sub.textContent = chatSubtitle(chat);
+  ui.avatar.style.background = chat.type === "agent" ? agentColor(chat.agents[0]) : "#8b7fc7";
+  ui.avatar.textContent = initialsOf(chat.type === "agent" ? agentName(chat.agents[0]) : (chat.title || chat.agents.map(agentName).join(" ")));
+  ui.del.style.display = chat.type === "group" ? "" : "none";
+  ui.del.textContent = chatState.confirmDelete ? "Confirm delete?" : "Delete group";
+  ui.del.classList.toggle("danger", chatState.confirmDelete);
+  // messages
+  const box = ui.msgs;
+  const nearBottom = forceBottom || box.scrollHeight - box.scrollTop - box.clientHeight < 90;
+  let html = "";
+  if (!chat.messages.length) {
+    const hint = chat.type === "agent" && AGENTS[chat.agents[0]] ? AGENTS[chat.agents[0]].hint
+      : "Send a message and the agents in this group will take turns answering it, each building on the one before.";
+    html += `<div class="empty">${escapeHtml(hint)}</div>`;
+  }
+  html += chat.messages.map(m => msgHtml(chat, m)).join("");
+  if (chat.id === "agent-" + managerId() && chatState.compile) {
+    html += `<div class="m them"><div class="plan-card"><div class="m-who">All assigned tasks are finished</div><div class="btnrow"><button class="ok compile-ok">Ask ${escapeHtml(agentName(managerId()))} for the executive report</button></div></div></div>`;
+  }
+  box.innerHTML = html;
+  hydrateImages(box);
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+  renderTyping();
+  renderComposer();
+}
+
+function renderTyping() {
+  const ui = chatState.ui; if (!ui || !chatState.open) return;
+  const chat = chatState.chats[chatState.open]; if (!chat) return;
+  const t = chatState.typing[chat.id] || {};
+  const names = [...new Set(Object.values(t).map(x => agentName(x.agent_id)))];
+  if (!names.length && chat.type === "group" && chatState.busy.has(chat.id)) names.push("The group");
+  ui.typing.innerHTML = names.length
+    ? `<span class="dots"><i></i><i></i><i></i></span> ${escapeHtml(names.join(" and "))} ${names.length > 1 ? "are" : "is"} working... this can take a minute or two` : "";
+  const box = ui.msgs;
+  if (names.length && box.scrollHeight - box.scrollTop - box.clientHeight < 120) box.scrollTop = box.scrollHeight;
+}
+
+function renderComposer() {
+  const ui = chatState.ui; if (!ui || !chatState.open) return;
+  const chat = chatState.chats[chatState.open]; if (!chat) return;
+  const busy = chat.type === "group" && chatState.busy.has(chat.id);
+  ui.input.disabled = busy; ui.send.disabled = busy;
+  ui.input.placeholder = busy ? "The agents are working on your last message..."
+    : (chat.type === "group" ? "Message the group..." : `Message ${agentName(chat.agents[0])}...`);
+}
+
+/* ---------- sending ---------- */
+async function sendText(chatId, text) {
+  const chat = chatState.chats[chatId]; if (!chat) return false;
+  const res = await chatFetch(`/api/chats/${encodeURIComponent(chatId)}/message`, { text });
+  if (res.error) { toast(res.error); return false; }
+  addMessage(chatId, res.message);
+  if (chat.type === "group") { chatState.busy.add(chatId); renderTyping(); renderComposer(); renderDock(); }
+  return true;
+}
+
+async function sendChat() {
+  const ui = chatState.ui, id = chatState.open;
+  if (!id) return;
+  const text = ui.input.value.trim();
+  if (!text) return;
+  ui.input.value = ""; autosize();
+  ui.send.disabled = true;
+  const ok = await sendText(id, text);
+  if (!ok) ui.input.value = text;
+  autosize();
+  renderComposer();
+  const chat = chatState.chats[id];
+  if (chat && chat.type !== "group") ui.send.disabled = false;
+}
+
+async function onMsgClick(e) {
+  const b = e.target.closest("button"); if (!b) return;
+  const id = chatState.open;
+  if (b.classList.contains("compile-ok")) {
+    b.disabled = true;
+    chatState.compile = false;
+    renderDock();
+    await sendText("agent-" + managerId(), COMPILE_TASK);
+    renderWindow(true);
+    return;
+  }
+  if (b.classList.contains("plan-ok") || b.classList.contains("plan-no")) {
+    const mid = b.dataset.mid, approve = b.classList.contains("plan-ok");
+    const chat = chatState.chats[id]; const m = chat && chat.messages.find(x => x.id === mid);
+    if (!m) return;
+    b.parentElement.querySelectorAll("button").forEach(x => x.disabled = true);
+    if (approve) views.assigned((m.assignments || []).map(a => a.agent));
+    const res = await chatFetch(`/api/chats/${encodeURIComponent(id)}/plan/${encodeURIComponent(mid)}`, { action: approve ? "approve" : "dismiss" });
+    if (res.error) { toast(res.error); renderWindow(); return; }
+    if (approve && res.task_ids && res.task_ids.length) {
+      const gid = ++groupSeq;
+      groups[gid] = { pending: new Set(res.task_ids), prompted: false };
+      res.task_ids.forEach(t => { taskToGroup[t] = gid; });
+    }
+    if (!approve) views.attention(false);
+  }
+}
+
+/* ---------- groups ---------- */
+function openGroupModal() {
+  const ui = chatState.ui;
+  ui.gmList.innerHTML = Object.keys(AGENTS).map(id =>
+    `<label class="grp-row"><input type="checkbox" value="${id}"><span class="face sm" style="background:${agentColor(id)}">${escapeHtml(initialsOf(agentName(id)))}</span>` +
+    `<span><b>${escapeHtml(agentName(id))}</b><small>${escapeHtml(agentTitle(id))}</small></span></label>`).join("");
+  ui.gmTitle.value = "";
+  ui.gmCreate.disabled = true;
+  ui.gmList.querySelectorAll("input").forEach(cb => cb.onchange = () => {
+    ui.gmCreate.disabled = ui.gmList.querySelectorAll("input:checked").length < 2;
+  });
+  ui.gm.style.display = "flex";
+  try { history.pushState({ gm: 1 }, ""); } catch (e) {}
+}
+function closeGroupModal() {
+  if (history.state && history.state.gm) { history.back(); return; }
+  chatState.ui.gm.style.display = "none";
+}
+// Hides the modal without touching history (used right after a group is created).
+function hideGroupModalNow() { chatState.ui.gm.style.display = "none"; }
+
+window.addEventListener("popstate", (e) => {
+  const st = e.state || {};
+  const ui = chatState.ui;
+  if (!ui) return;
+  if (ui.gm.style.display === "flex" && !st.gm) hideGroupModalNow();
+  if (st.gm) return;
+  if (st.chat) { if (chatState.open !== st.chat && chatState.chats[st.chat]) openChat(st.chat, true); }
+  else if (chatState.open) hideChat();
+});
+
+async function createGroup() {
+  const ui = chatState.ui;
+  const agents = [...ui.gmList.querySelectorAll("input:checked")].map(cb => cb.value);
+  if (agents.length < 2) return;
+  ui.gmCreate.disabled = true;
+  const res = await chatFetch("/api/chats", { agents, title: ui.gmTitle.value.trim() });
+  if (res.error) { ui.gmCreate.disabled = false; alertInModal(res.error); return; }
+  hideGroupModalNow();
+  addChat(res.chat);
+  openChat(res.chat.id);
+}
+function alertInModal(text) {
+  const el = chatState.ui.gm.querySelector(".hint");
+  el.textContent = text; el.style.color = "#f0899b";
+}
+
+function onDeleteClick() {
+  const id = chatState.open; if (!id) return;
+  if (!chatState.confirmDelete) {
+    chatState.confirmDelete = true; renderWindow();
+    setTimeout(() => { if (chatState.confirmDelete) { chatState.confirmDelete = false; if (chatState.open) renderWindow(); } }, 3500);
+    return;
+  }
+  chatState.confirmDelete = false;
+  chatFetch(`/api/chats/${encodeURIComponent(id)}`, null, "DELETE").then(res => {
+    if (res.error) { toast(res.error); renderWindow(); }
+  });
+}
+
+/* ---------- state updates ---------- */
+function addChat(chat) {
+  if (!chat || chatState.chats[chat.id]) return;
+  chatState.chats[chat.id] = chat;
+  chatState.order.push(chat.id);
+  chatState.seen[chat.id] = lastTs(chat); saveSeen();
+  renderDock();
+}
+
+function addMessage(chatId, msg) {
+  const chat = chatState.chats[chatId];
+  if (!chat || !msg) return;
+  if (chat.messages.some(m => m.id === msg.id)) return;
+  chat.messages.push(msg);
+  if (chatState.open === chatId && !document.hidden) markSeen(chat);
+  renderDock();
+  if (chatState.open === chatId) renderWindow();
+}
+
+async function chatReload() {
+  const data = await chatFetch("/api/chats");
+  if (!data || !data.chats) return;
+  chatState.chats = {}; chatState.order = [];
+  for (const c of data.chats) { chatState.chats[c.id] = c; chatState.order.push(c.id); }
+  chatState.busy = new Set(data.busy || []);
+  for (const c of data.chats) { if (chatState.seen[c.id] == null) chatState.seen[c.id] = lastTs(c); }
+  saveSeen();
+  if (chatState.open && !chatState.chats[chatState.open]) { chatState.open = null; document.body.classList.remove("chat-open"); chatState.ui.win.classList.remove("on"); }
+  if (chatState.firstLoad) {
+    chatState.firstLoad = false;
+    // A plan the manager proposed earlier that is still waiting: make them stand at your desk again.
+    const mgr = chatState.chats["agent-" + managerId()];
+    const pending = mgr && mgr.messages.filter(m => m.kind === "plan" && m.status === "pending").pop();
+    if (pending) views.plan({ agent_id: managerId(), assignments: pending.assignments });
+  }
+  renderDock();
+  if (chatState.open) renderWindow();
+}
+
+// Called whenever a task ends (result or error). Keeps the animation right when
+// an agent has several tasks, and tracks approved batches.
+function finishTask(msg, finalState) {
+  running[msg.agent_id] = Math.max(0, (running[msg.agent_id] || 1) - 1);
+  views.setState(msg.agent_id, running[msg.agent_id] > 0 ? "working" : finalState);
+  const gid = taskToGroup[msg.task_id];
+  if (!gid) return;
+  const g = groups[gid];
+  g.pending.delete(msg.task_id);
+  if (g.pending.size === 0 && !g.prompted) { g.prompted = true; showCompilePrompt(); }
+}
+
+// Shown once every task in an approved batch has finished.
+function showCompilePrompt() {
+  chatState.compile = true;
+  renderDock();
+  if (chatState.open === "agent-" + managerId()) renderWindow();
+}
+
+function setTyping(chatId, taskId, agentId, message) {
+  if (!chatId) return;
+  (chatState.typing[chatId] = chatState.typing[chatId] || {})[taskId] = { agent_id: agentId, message };
+}
+function clearTyping(chatId, taskId) {
+  if (!chatId || !chatState.typing[chatId]) return;
+  delete chatState.typing[chatId][taskId];
+}
+function refreshWorking() { renderDock(); if (chatState.open) renderTyping(); }
+
+function handleWS(event) {
+  let msg; try { msg = JSON.parse(event.data); } catch (e) { return; }
+  if (!chatState.ui) return;
+  switch (msg.type) {
+    case "task_started":
+      running[msg.agent_id] = (running[msg.agent_id] || 0) + 1;
+      views.setState(msg.agent_id, "working");
+      setTyping(msg.chat_id, msg.task_id, msg.agent_id, "");
+      refreshWorking();
+      break;
+    case "status":
+      views.setState(msg.agent_id, "working");
+      setTyping(msg.chat_id, msg.task_id, msg.agent_id, msg.message);
+      break;
+    case "result":
+      clearTyping(msg.chat_id, msg.task_id);
+      finishTask(msg, msg.failed ? "error" : "done");
+      refreshWorking();
+      break;
+    case "error":
+      clearTyping(msg.chat_id, msg.task_id);
+      finishTask(msg, "error");
+      refreshWorking();
+      break;
+    case "plan":
+      views.plan(msg);
+      break;
+    case "chat_message":
+      addMessage(msg.chat_id, msg.message);
+      break;
+    case "chat_message_updated": {
+      const chat = chatState.chats[msg.chat_id];
+      if (chat && msg.message) {
+        const i = chat.messages.findIndex(m => m.id === msg.message.id);
+        if (i >= 0) chat.messages[i] = msg.message;
+        if (chatState.open === msg.chat_id) renderWindow();
+      }
+      break;
+    }
+    case "chat_created":
+      addChat(msg.chat);
+      break;
+    case "chat_deleted":
+      delete chatState.chats[msg.chat_id];
+      chatState.order = chatState.order.filter(x => x !== msg.chat_id);
+      chatState.busy.delete(msg.chat_id);
+      if (chatState.open === msg.chat_id) closeChat();
+      renderDock();
+      break;
+    case "group_idle":
+      chatState.busy.delete(msg.chat_id);
+      chatState.typing[msg.chat_id] = {};
+      refreshWorking(); renderComposer();
+      break;
+  }
+}
+
+/* The connection to the server. Phones drop it whenever the app goes to the
+   background, so reconnect on its own and reload the chats when it's back. */
+function connectWS() {
+  AT.bus.on(msg => handleWS({ data: JSON.stringify(msg) }));
+}
+
+window.chatInit = async function () {
+  buildChatUI();
+  await chatReload();
+  connectWS();
+};
+
+// Clicking an agent in the office opens their own chat.
+function openModal(agentId) {
+  if (!chatState.ui) return;
+  if (!chatState.chats["agent-" + agentId]) { chatReload().then(() => openChat("agent-" + agentId)); return; }
+  openChat("agent-" + agentId);
+}
+
+</script>
+<script>
+/* ==================================================================
+   SIMS VIEW - part 1: the world (layout, pathfinding, behaviour)
+   No drawing happens here, so it can be tested without a canvas.
+   ================================================================== */
+const SimsWorld = (function () {
+  const GW = 14, GD = 11;                     // room size in tiles (x, y)
+
+  // Workstations: the desk covers cells (x,y) and (x+1,y); the agent sits in the chair cell just west of the desk (x-1,y), facing east along it.
+  const WS = {};                                // desks are filled in from the saved layout (configure)
+  const CEO = { x: 2, y: 2, w: 3, chair: [3, 1] };
+  const CEO_SPOTS = [[3, 3], [4, 3], [2, 3]];   // where agents stand to hand over a report (face north)
+
+  const FURNITURE = {
+    sofa:     { x: 4,  y: 1, w: 3, d: 1 },
+    table:    { x: 5,  y: 3, w: 2, d: 1 },
+    shelf:    { x: 9,  y: 0, w: 3, d: 1 },
+    counter:  { x: 12, y: 1, w: 2, d: 1 },
+    cooler:   { x: 13, y: 3, w: 1, d: 1 },
+    showcase: { x: 6,  y: 9, w: 2, d: 1 },        // the glass display case
+    plants:   [[1, 1], [13, 5], [0, 10]],
+  };
+  const FURNITURE_KEYS = ["sofa", "table", "shelf", "counter", "cooler", "showcase"];
+
+  // Things agents wander off to do when they have nothing to work on.
+  const SPOTS = {
+    coffee:   { cells: [[12, 2], [13, 2]], face: [0, -1], say: ["☕", "😌", "☕"], dur: [4, 7], weight: 2 },
+    cooler:   { cells: [[12, 3]],           face: [1, 0],  say: ["💧", "😅"],       dur: [3, 5], weight: 2 },
+    board:    { cells: [[1, 7], [1, 8]], face: [-1, 0], say: ["📊", "🤔", "👀"], dur: [4, 7], weight: 1 },
+    shelf:    { cells: [[10, 1], [9, 1], [11, 1]], face: [0, -1], say: ["📚", "🤓"],      dur: [4, 6], weight: 1 },
+    window:   { cells: [[1, 3], [1, 4]],    face: [-1, 0], say: ["🌇", "😊", "✨"], dur: [4, 7], weight: 1 },
+    showcase: { cells: [[6, 10], [7, 10]], face: [0, -1], say: ["🌸", "😍", "🧴"], dur: [4, 7], weight: 1.5 },
+    sofa:     { seats: [{ x: 5.5, y: 1.55, cell: [5, 2] }, { x: 6.5, y: 1.55, cell: [6, 2] }],
+                face: [0, 1], say: ["😌", "📱", "💭"], dur: [6, 10], weight: 1.5 },
+  };
+
+  // ---------- blocked cells for pathfinding (rebuilt whenever the layout changes) ----------
+  const blocked = new Set();
+  const key = (i, j) => i + "," + j;
+  function block(i, j) { blocked.add(key(i, j)); }
+  function rebuildBlocked() {
+    blocked.clear();
+    Object.values(WS).forEach(w => { block(w.x, w.y); block(w.x + 1, w.y); block(w.x - 1, w.y); });
+    for (let i = 0; i < CEO.w; i++) block(CEO.x + i, CEO.y);
+    block(CEO.chair[0], CEO.chair[1]);
+    FURNITURE_KEYS.forEach(k => {
+      const f = FURNITURE[k];
+      for (let i = 0; i < f.w; i++) for (let j = 0; j < f.d; j++) block(f.x + i, f.y + j);
+    });
+    FURNITURE.plants.forEach(p => block(p[0], p[1]));
+  }
+  rebuildBlocked();
+
+  // Applies a layout saved from the Office dashboard (desk/furniture/plant positions).
+  // Unknown ids or non-numeric coordinates are ignored, so a partial or malformed
+  // layout can never leave the office in a broken state -- whatever doesn't parse
+  // just keeps its previous position.
+  function configure(layout) {
+    if (!layout) return;
+    const finite = v => typeof v === "number" && isFinite(v);
+    if (layout.desks) {
+      Object.entries(layout.desks).forEach(([id, pos]) => {
+        if (pos && finite(pos.x) && finite(pos.y)) { WS[id] = WS[id] || { x: 0, y: 0 }; WS[id].x = pos.x; WS[id].y = pos.y; }
+      });
+    }
+    if (layout.furniture) {
+      Object.entries(layout.furniture).forEach(([k, pos]) => {
+        if (FURNITURE[k] && pos && finite(pos.x) && finite(pos.y)) { FURNITURE[k].x = pos.x; FURNITURE[k].y = pos.y; }
+      });
+    }
+    if (Array.isArray(layout.plants) && layout.plants.length) {
+      FURNITURE.plants = layout.plants.filter(p => Array.isArray(p) && finite(p[0]) && finite(p[1])).map(p => [p[0], p[1]]);
+    }
+    rebuildBlocked();
+  }
+
+  const isBlocked = (i, j) => i < 0 || j < 0 || i >= GW || j >= GD || blocked.has(key(i, j));
+
+  // ---------- A* on the tile grid (8 directions, no corner cutting) ----------
+  function findPath(sx, sy, tx, ty) {
+    const start = key(sx, sy), goal = key(tx, ty);
+    if (start === goal) return [];
+    const open = [{ i: sx, j: sy, g: 0, f: 0, prev: null }];
+    const best = { [start]: 0 };
+    const h = (i, j) => { const dx = Math.abs(i - tx), dy = Math.abs(j - ty); return dx + dy + (1.414 - 2) * Math.min(dx, dy); };
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    while (open.length) {
+      let bi = 0;
+      for (let n = 1; n < open.length; n++) if (open[n].f < open[bi].f) bi = n;
+      const cur = open.splice(bi, 1)[0];
+      if (key(cur.i, cur.j) === goal) {
+        const out = [];
+        for (let n = cur; n && n.prev; n = n.prev) out.push([n.i, n.j]);
+        return out.reverse();
+      }
+      for (const [dx, dy] of dirs) {
+        const ni = cur.i + dx, nj = cur.j + dy, k = key(ni, nj);
+        if (ni < 0 || nj < 0 || ni >= GW || nj >= GD) continue;
+        if (k !== goal && isBlocked(ni, nj)) continue;
+        if (dx && dy && (isBlocked(cur.i + dx, cur.j) || isBlocked(cur.i, cur.j + dy))) continue;
+        const g = cur.g + (dx && dy ? 1.414 : 1);
+        if (best[k] !== undefined && best[k] <= g) continue;
+        best[k] = g;
+        open.push({ i: ni, j: nj, g, f: g + h(ni, nj), prev: cur });
+      }
+    }
+    return null;
+  }
+
+  // ---------- helpers ----------
+  const seatPos = id => ({ x: WS[id].x - 0.45, y: WS[id].y + 0.5 });
+  const visitCell = id => [WS[id].x - 1, WS[id].y + 1];
+  const norm = (dx, dy) => { const n = Math.hypot(dx, dy) || 1; return [dx / n, dy / n]; };
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const center = c => ({ x: c[0] + 0.5, y: c[1] + 0.5 });
+
+  return { GW, GD, WS, CEO, CEO_SPOTS, FURNITURE, FURNITURE_KEYS, SPOTS, blocked, isBlocked, findPath, seatPos, visitCell, norm, rand, center, configure };
+})();
+
+/* ------------------------------------------------------------------ */
+/*  Simulation: actors, actions, and the hooks the page calls           */
+/* ------------------------------------------------------------------ */
+function createSimulation(ids) {
+  const W = SimsWorld;
+  const S = { t: 0, attention: false, actors: {}, ceo: { papers: 0, pulse: 0 }, timers: [], occupied: {} };
+  const MGR = () => (typeof managerId === "function" ? managerId() : null);
+  const SPEED = 2.4;                                   // tiles per second
+
+  ids.forEach((id, n) => {
+    const p = W.seatPos(id);
+    S.actors[id] = {
+      id, x: p.x, y: p.y, fx: 1, fy: 0, pose: "sit", at: "desk", mode: "idle",
+      queue: [], cur: null, path: null, target: null, moving: false, phase: Math.random() * 6,
+      idleT: 3 + n * 2.2 + Math.random() * 6, bubble: null, carry: null, talkUntil: 0,
+      spot: null, blinkT: 2 + Math.random() * 3, blink: 0, z: 0,
+    };
+  });
+
+  const later = (delay, fn) => S.timers.push({ at: S.t + delay, fn });
+  const say = (a, text, secs) => { a.bubble = { text, until: S.t + (secs || 2.5) }; };
+  const face = (a, dx, dy) => { const [nx, ny] = W.norm(dx, dy); a.fx = nx; a.fy = ny; };
+  const atDesk = a => a.pose === "sit" && a.at === "desk";
+  const release = a => { if (a.spot) { delete S.occupied[a.spot]; a.spot = null; } };
+
+  function cancelWork(a) {                             // drop whatever it was doing
+    release(a);
+    a.queue = []; a.cur = null; a.path = null; a.moving = false; a.carry = null;
+  }
+
+  const walkTo = (x, y, extra) => Object.assign({ t: "walk", x, y }, extra || {});
+  const goToSeat = a => [walkTo(W.seatPos(a.id).x, W.seatPos(a.id).y), { t: "sit", seat: "desk" }];
+
+  // ---------- starting an action ----------
+  function begin(a, act) {
+    if (act.t === "walk") {
+      if (a.pose === "sit") { a.pose = "stand"; a.at = null; }
+      const sx = Math.floor(a.x), sy = Math.floor(a.y);
+      const tx = Math.floor(act.x), ty = Math.floor(act.y);
+      const cells = W.findPath(sx, sy, tx, ty);
+      a.path = (cells || []).map(c => W.center(c));
+      if (!cells) a.path = [];
+      a.path.push({ x: act.x, y: act.y });
+      a.moving = true;
+    } else if (act.t === "sit") {
+      const p = act.seat === "desk" ? W.seatPos(a.id) : act.pos;
+      a.x = p.x; a.y = p.y; a.pose = "sit"; a.at = act.seat; a.moving = false;
+      face(a, act.face ? act.face[0] : 1, act.face ? act.face[1] : 0);
+    } else if (act.t === "face") {
+      face(a, act.d[0], act.d[1]);
+    } else if (act.t === "say") {
+      say(a, act.text, act.s);
+    } else if (act.t === "wait") {
+      act.left = act.s;
+    } else if (act.t === "waitFor") {
+      act.left = act.max || 600;
+    }
+  }
+
+  // returns true when finished
+  function run(a, act, dt) {
+    switch (act.t) {
+      case "walk": {
+        let budget = SPEED * dt;
+        while (budget > 0 && a.path.length) {
+          const wp = a.path[0];
+          const dx = wp.x - a.x, dy = wp.y - a.y, d = Math.hypot(dx, dy);
+          if (d > 0.001) { const [nx, ny] = W.norm(dx, dy); a.fx = nx; a.fy = ny; }
+          if (d <= budget) { a.x = wp.x; a.y = wp.y; budget -= d; a.path.shift(); }
+          else { a.x += (dx / d) * budget; a.y += (dy / d) * budget; budget = 0; }
+        }
+        a.phase += SPEED * dt * 4.2;
+        if (!a.path.length) { a.moving = false; if (act.face) face(a, act.face[0], act.face[1]); return true; }
+        return false;
+      }
+      case "wait":    act.left -= dt; return act.left <= 0;
+      case "waitFor": act.left -= dt; return act.fn() || act.left <= 0;
+      case "call":    act.fn(a); return true;
+      default:        return true;                    // sit / face / say finish immediately
+    }
+  }
+
+  // ---------- idle life ----------
+  function pickFreeCell(spot) {
+    const free = spot.cells.filter(c => !S.occupied[c.join(",")]);
+    return free.length ? free[Math.floor(Math.random() * free.length)] : null;
+  }
+
+  function startActivity(a) {
+    const options = [];
+    Object.entries(W.SPOTS).forEach(([name, sp]) => {
+      const available = sp.seats ? sp.seats.some(s => !S.occupied["seat" + s.cell.join(",")]) : !!pickFreeCell(sp);
+      if (available) options.push([name, sp.weight]);
+    });
+    const buddies = Object.values(S.actors).filter(b => b !== a && b.mode === "idle" && atDesk(b) && b.talkUntil < S.t && !b.cur && !b.queue.length);
+    if (buddies.length) options.push(["chat", 2]);
+    if (!options.length) { a.idleT = W.rand(4, 8); return; }
+    let r = Math.random() * options.reduce((s, o) => s + o[1], 0), choice = options[0][0];
+    for (const [name, w] of options) { r -= w; if (r <= 0) { choice = name; break; } }
+
+    const seatBack = goToSeat(a);
+    if (choice === "chat") {
+      const b = buddies[Math.floor(Math.random() * buddies.length)];
+      const vc = W.visitCell(b.id), sp = W.seatPos(b.id);
+      const [dx, dy] = W.norm(sp.x - (vc[0] + 0.5), sp.y - (vc[1] + 0.5));
+      b.talkUntil = S.t + 12;
+      a.queue = [
+        walkTo(vc[0] + 0.5, vc[1] + 0.5, { face: [dx, dy] }),
+        { t: "say", text: "👋", s: 1.6 },
+        { t: "call", fn: () => later(1.2, () => say(b, "😊", 1.6)) },
+        { t: "wait", s: 2.6 },
+        { t: "say", text: "💬", s: 1.8 },
+        { t: "call", fn: () => later(1.3, () => say(b, "😄", 1.6)) },
+        { t: "wait", s: 3.2 },
+        { t: "call", fn: () => { b.talkUntil = 0; } },
+        ...seatBack,
+      ];
+      a.idleT = W.rand(12, 22);
+      return;
+    }
+    const sp = W.SPOTS[choice];
+    const emoji = () => sp.say[Math.floor(Math.random() * sp.say.length)];
+    const dur = W.rand(sp.dur[0], sp.dur[1]);
+    if (sp.seats) {
+      const free = sp.seats.filter(s => !S.occupied["seat" + s.cell.join(",")]);
+      const seat = free[Math.floor(Math.random() * free.length)];
+      const k = "seat" + seat.cell.join(",");
+      S.occupied[k] = true; a.spot = k;
+      a.queue = [
+        walkTo(seat.cell[0] + 0.5, seat.cell[1] + 0.5),
+        { t: "sit", seat: "sofa", pos: { x: seat.x, y: seat.y }, face: sp.face },
+        { t: "say", text: emoji(), s: 2.4 }, { t: "wait", s: dur / 2 },
+        { t: "say", text: emoji(), s: 2.4 }, { t: "wait", s: dur / 2 },
+        { t: "call", fn: () => release(a) }, ...seatBack,
+      ];
+    } else {
+      const cell = pickFreeCell(sp), k = cell.join(",");
+      S.occupied[k] = true; a.spot = k;
+      const c = W.center(cell);
+      a.queue = [
+        walkTo(c.x, c.y, { face: sp.face }),
+        { t: "say", text: emoji(), s: 2.4 }, { t: "wait", s: dur / 2 },
+        { t: "say", text: emoji(), s: 2.4 }, { t: "wait", s: dur / 2 },
+        { t: "call", fn: () => release(a) }, ...seatBack,
+      ];
+    }
+    a.idleT = W.rand(10, 20);
+  }
+
+  // ---------- one simulation step ----------
+  function step(dt) {
+    S.t += dt;
+    S.ceo.pulse = Math.max(0, S.ceo.pulse - dt);
+    for (let n = S.timers.length - 1; n >= 0; n--) {
+      if (S.timers[n].at <= S.t) { const tm = S.timers.splice(n, 1)[0]; tm.fn(); }
+    }
+    Object.values(S.actors).forEach(a => {
+      a.blinkT -= dt;
+      if (a.blinkT <= 0) { a.blink = 0.14; a.blinkT = 2.5 + Math.random() * 3.5; }
+      a.blink = Math.max(0, a.blink - dt);
+      if (a.bubble && a.bubble.until <= S.t) a.bubble = null;
+
+      // run queued actions; instant ones (sit, say, face, call) finish in the same frame
+      let guard = 0;
+      while (guard++ < 8) {
+        if (!a.cur && a.queue.length) { a.cur = a.queue.shift(); begin(a, a.cur); }
+        if (!a.cur) break;
+        if (!run(a, a.cur, dt)) break;
+        a.cur = null;
+      }
+      if (a.cur || a.queue.length) return;
+
+      // nothing scheduled: fall back to default behaviour
+      if (a.mode === "working") {
+        if (!atDesk(a)) a.queue = goToSeat(a);
+      } else if (a.mode === "idle") {
+        if (!atDesk(a)) { a.queue = goToSeat(a); return; }
+        if (a.talkUntil > S.t) return;
+        a.idleT -= dt;
+        if (a.idleT <= 0) startActivity(a);
+      } else if (a.mode === "done" || a.mode === "error") {
+        a.mode = "idle";
+      }
+    });
+  }
+
+  // ---------- hooks used by the page ----------
+  function setState(id, state) {
+    const a = S.actors[id]; if (!a) return;
+    if (state === "working") {
+      if (a.mode === "working") return;
+      a.mode = "working"; cancelWork(a);
+      if (!atDesk(a)) a.queue = goToSeat(a);
+    } else if (state === "done") {
+      a.mode = "done"; cancelWork(a);
+      const spot = W.CEO_SPOTS[Object.keys(S.actors).indexOf(id) % W.CEO_SPOTS.length];
+      const c = W.center(spot);
+      a.queue = [
+        { t: "say", text: "Report ready ✔", s: 2.6 },
+        { t: "call", fn: () => { a.carry = "paper"; } },
+        walkTo(c.x, c.y, { face: [0, -1] }),
+        { t: "wait", s: 0.5 },
+        { t: "call", fn: () => { a.carry = null; S.ceo.papers = Math.min(6, S.ceo.papers + 1); S.ceo.pulse = 1.2; } },
+        { t: "say", text: "On your desk, boss", s: 2.2 },
+        { t: "wait", s: 1.4 },
+        { t: "waitFor", fn: () => id !== MGR() || !S.attention },
+        ...goToSeat(a),
+        { t: "call", fn: () => { if (a.mode === "done") a.mode = "idle"; } },
+      ];
+    } else if (state === "error") {
+      a.mode = "error"; cancelWork(a);
+      a.queue = [...(atDesk(a) ? [] : goToSeat(a)), { t: "say", text: "⚠ That didn't work", s: 4 }, { t: "wait", s: 5 },
+                 { t: "call", fn: () => { if (a.mode === "error") a.mode = "idle"; } }];
+    } else {                                           // idle
+      if (a.mode === "working" || a.mode === "error") a.mode = "idle";
+    }
+  }
+
+  // The manager has a plan waiting for the owner's approval: they stand at the owner's desk until it is approved or dismissed.
+  function plan() {
+    const o = S.actors[MGR()]; if (!o) return;
+    S.attention = true;
+    if (o.mode === "done") return;                      // he is already walking over to the CEO desk
+    cancelWork(o); o.mode = "done";
+    const c = W.center(W.CEO_SPOTS[0]);
+    o.queue = [
+      { t: "say", text: "Plan ready for your OK", s: 4 },
+      walkTo(c.x, c.y, { face: [0, -1] }),
+      { t: "waitFor", fn: () => !S.attention },
+      ...goToSeat(o),
+      { t: "call", fn: () => { if (o.mode === "done") o.mode = "idle"; } },
+    ];
+  }
+
+  // The owner approved: the manager visits each assigned agent's desk to hand out the work.
+  function assigned(agentIds) {
+    S.attention = false;
+    const o = S.actors[MGR()]; if (!o) return;
+    const tour = [];
+    [...new Set(agentIds)].filter(id => id !== MGR() && W.WS[id]).forEach(id => {
+      const vc = W.visitCell(id), sp = W.seatPos(id);
+      const [dx, dy] = W.norm(sp.x - (vc[0] + 0.5), sp.y - (vc[1] + 0.5));
+      const t = (typeof window !== "undefined" && window.TEAM && window.TEAM.agents) ? window.TEAM.agents[id] : null;
+      const name = (t && t.name) || (id.charAt(0).toUpperCase() + id.slice(1));
+      tour.push(
+        walkTo(vc[0] + 0.5, vc[1] + 0.5, { face: [dx, dy] }),
+        { t: "say", text: "New task for " + name, s: 2.4 },
+        { t: "call", fn: () => later(0.5, () => say(S.actors[id], "On it! 💪", 2.2)) },
+        { t: "wait", s: 1.6 }
+      );
+    });
+    if (!tour.length) return;
+    // insert the tour right after the "wait for approval" step (so a report he is
+    // still delivering is not skipped), then let that wait finish
+    const idx = o.queue.findIndex(x => x.t === "waitFor");
+    if (idx >= 0) o.queue.splice(idx + 1, 0, ...tour);
+    else o.queue = [...tour, ...o.queue];
+    if (o.cur && o.cur.t === "waitFor") o.cur.left = 0;
+  }
+  function dismissed() { S.attention = false; }
+  function attention(on) { S.attention = !!on; }
+
+  return { S, step, setState, plan, assigned, dismissed, attention, atDesk };
+}
+
+/* ==================================================================
+   SIMS VIEW - part 2: drawing (isometric room, furniture, characters)
+   ================================================================== */
+const SimsDraw = (function () {
+  const W = SimsWorld;
+  const TW = 36, TH = 18, WALL_H = 132;
+  const WORLD_W = 1000, WORLD_H = 660, OX = 440, OY = 176;
+  const P = (gx, gy, gz) => ({ x: OX + (gx - gy) * TW, y: OY + (gx + gy) * TH - (gz || 0) });
+  const UI_FONT = 'system-ui,"Segoe UI",Roboto,Helvetica,Arial,"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+
+  /* ---------- colour + shape helpers ---------- */
+  const rgb = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  function shade(h, a) { const [r, g, b] = rgb(h), t = Math.abs(a), f = a < 0 ? 0 : 255;
+    return `rgb(${Math.round(r + (f - r) * t)},${Math.round(g + (f - g) * t)},${Math.round(b + (f - b) * t)})`; }
+  const alpha = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})`; };
+
+  function poly(c, pts, fill, stroke, lw) {
+    c.beginPath();
+    pts.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+    c.closePath();
+    if (fill) { c.fillStyle = fill; c.fill(); }
+    if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw || 1; c.stroke(); }
+  }
+  function rr(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  function isoBox(c, gx, gy, w, d, z0, h, col, o) {
+    o = o || {};
+    const top = o.top || shade(col, 0.16), left = o.left || col, right = o.right || shade(col, -0.24), z1 = z0 + h;
+    poly(c, [P(gx, gy + d, z0), P(gx + w, gy + d, z0), P(gx + w, gy + d, z1), P(gx, gy + d, z1)], left, o.edge);
+    poly(c, [P(gx + w, gy, z0), P(gx + w, gy + d, z0), P(gx + w, gy + d, z1), P(gx + w, gy, z1)], right, o.edge);
+    poly(c, [P(gx, gy, z1), P(gx + w, gy, z1), P(gx + w, gy + d, z1), P(gx, gy + d, z1)], top, o.edge);
+  }
+  // Draw in "face coordinates": u along the wall/face (in tiles), v = pixels upward.
+  function onFaceX(c, gx0, gyFace, z0, fn) { const o = P(gx0, gyFace, z0); c.save(); c.transform(TW, TH, 0, -1, o.x, o.y); fn(); c.restore(); }   // plane facing +y (right wall, desk fronts)
+  function onFaceY(c, gxFace, gy0, z0, fn) { const o = P(gxFace, gy0, z0); c.save(); c.transform(-TW, TH, 0, -1, o.x, o.y); fn(); c.restore(); } // plane facing +x (left wall)
+  function textRight(c, gx, gy, z, fn) { const o = P(gx, gy, z); c.save(); c.transform(1, 0.5, 0, 1, o.x, o.y); fn(); c.restore(); }   // upright text on a +y-facing plane
+  function textLeft(c, gx, gy, z, fn) { const o = P(gx, gy, z); c.save(); c.transform(1, -0.5, 0, 1, o.x, o.y); fn(); c.restore(); }   // upright text on the left wall
+
+  /* ---------- time of day ---------- */
+  function hourNow() { return typeof window !== "undefined" && window.__simsHour !== undefined ? window.__simsHour : new Date().getHours() + new Date().getMinutes() / 60; }
+  function sky(h) {
+    if (h >= 7.5 && h < 17)   return { top: "#6fb6ea", bot: "#d7eefc", night: false, tint: null };
+    if (h >= 17 && h < 19.5)  return { top: "#5a4a8a", bot: "#f2a065", night: false, tint: "rgba(255,150,80,0.10)" };
+    if (h >= 5.5 && h < 7.5)  return { top: "#7f86c9", bot: "#f7c59f", night: false, tint: "rgba(255,190,140,0.08)" };
+    return { top: "#0b1233", bot: "#26386b", night: true, tint: "rgba(20,30,90,0.20)" };
+  }
+
+  /* ---------- the character look-book ---------- */
+  const DEFAULT_LOOK = { skin: "#e0ac82", hair: "#3b2a1e", style: "bob", shirt: "#8a93a3", pants: "#2d3446" };
+  function lookOf(id) { const t = teamOf(id); return Object.assign({}, DEFAULT_LOOK, (t && t.look) || {}); }
+  // Reads live from window.TEAM (set once /api/team resolves), so Team-dashboard edits show up on the very next frame.
+  function teamOf(id) { return window.TEAM && window.TEAM.agents && window.TEAM.agents[id]; }
+  function designationOf(id) { const t = teamOf(id); return (t && t.designation) || ""; }
+  function departmentOf(id) { const t = teamOf(id); return (t && t.department) || ""; }
+  function nameOf(id) { const t = teamOf(id); return (t && t.name) || id; }
+  function deptColor(id) { const t = teamOf(id); return (t && t.color) || lookOf(id).shirt; }
+  function genderOf(id) { const t = teamOf(id); return (t && t.gender) || "female"; }
+  // LOOKS gives each agent's own skin/hair colour and clothes; gender picks which
+  // hairstyle template goes on top, so a dashboard gender change re-shapes the
+  // silhouette without losing that agent's own palette.
+  function hairStyleOf(id) {
+    const base = lookOf(id).style;
+    return genderOf(id) === "male" ? "short" : (base === "short" ? "long" : base);
+  }
+  function hasBeard(id) { return !!lookOf(id).beard && genderOf(id) === "male"; }
+  const PLUMB = { idle: "#4ade80", working: "#38bdf8", done: "#fbbf24", error: "#f87171", waiting: "#fb923c" };
+
+  // Matches agents_config.py's ALLOWED_FONTS (label omitted -- the dropdown label lives server-side).
+  const FONTS = {
+    georgia:    { family: "Georgia, 'Palatino Linotype', serif", style: "italic" },
+    playfair:   { family: "'Playfair Display', Georgia, serif", style: "italic" },
+    cormorant:  { family: "'Cormorant Garamond', Georgia, serif", style: "italic" },
+    poppins:    { family: "'Poppins', system-ui, sans-serif", style: "normal" },
+    montserrat: { family: "'Montserrat', system-ui, sans-serif", style: "normal" },
+    bebas:      { family: "'Bebas Neue', system-ui, sans-serif", style: "normal" },
+    pacifico:   { family: "'Pacifico', cursive", style: "normal" },
+  };
+  function brandName() { return (window.OFFICE && window.OFFICE.brand_name) || "Your Company"; }
+  // A CEO-uploaded font file (woff2/woff/ttf/otf) is registered once via the FontFace API,
+  // then used under the family name "CustomBrandFont" once it finishes loading.
+  let _customFont = { uri: null, ready: false };
+  function ensureCustomFont(uri) {
+    if (!uri) return false;
+    if (_customFont.uri === uri) return _customFont.ready;
+    _customFont = { uri, ready: false };
+    try {
+      const face = new FontFace("CustomBrandFont", `url(${uri})`);
+      face.load().then(loaded => {
+        document.fonts.add(loaded);
+        _customFont.ready = true;
+        if (SimsDraw.onTextureReady) SimsDraw.onTextureReady();
+        if (window.applyBranding) window.applyBranding(window.OFFICE);
+      }).catch(() => { _customFont.ready = false; });
+    } catch (e) { /* FontFace unsupported or a bad file -- falls back to the picked list below */ }
+    return false;
+  }
+  function brandFont() {
+    const o = window.OFFICE;
+    if (o && o.font_key === "custom" && o.custom_font && ensureCustomFont(o.custom_font)) {
+      return { family: "'CustomBrandFont', Georgia, serif", style: "normal" };
+    }
+    return FONTS[(o && o.font_key)] || FONTS.georgia;
+  }
+
+  // ---------- wall / floor texture images (data URIs from the Office dashboard) ----------
+  const _texCache = {};
+  function loadTexture(dataUri) {
+    if (!dataUri) return null;
+    let t = _texCache[dataUri];
+    if (!t) {
+      const img = new Image();
+      t = _texCache[dataUri] = { img, ready: false };
+      img.onload = () => { t.ready = true; if (SimsDraw.onTextureReady) SimsDraw.onTextureReady(); };
+      img.onerror = () => { t.ready = false; };
+      img.src = dataUri;
+    }
+    return t.ready ? t.img : null;
+  }
+  function wallTexture(c) { const img = loadTexture(window.OFFICE && window.OFFICE.wall_texture); return img && c.createPattern(img, "repeat"); }
+  function floorTexture(c) { const img = loadTexture(window.OFFICE && window.OFFICE.floor_texture); return img && c.createPattern(img, "repeat"); }
+
+  /* =========================== STATIC ROOM =========================== */
+  function renderBackground(c) {
+    const GW = W.GW, GD = W.GD, H = WALL_H, hour = hourNow(), sk = sky(hour);
+
+    // surroundings
+    c.fillStyle = "#141126"; c.fillRect(-4000, -4000, 9000, 9000);
+    let g = c.createRadialGradient(OX + 60, 330, 40, OX + 60, 330, 560);
+    g.addColorStop(0, "rgba(224,177,90,0.16)"); g.addColorStop(1, "rgba(224,177,90,0)");
+    c.fillStyle = g; c.fillRect(-4000, -4000, 9000, 9000);
+
+    // floor slab edges
+    poly(c, [P(0, GD, 0), P(GW, GD, 0), P(GW, GD, -14), P(0, GD, -14)], "#83593a");
+    poly(c, [P(GW, 0, 0), P(GW, GD, 0), P(GW, GD, -14), P(GW, 0, -14)], "#5f4029");
+
+    // wooden floor (or the CEO's own uploaded floor texture)
+    const floorPat = floorTexture(c);
+    if (floorPat) {
+      poly(c, [P(0, 0), P(GW, 0), P(GW, GD), P(0, GD)], floorPat, "rgba(92,60,30,0.18)", 1);
+    } else {
+      for (let i = 0; i < GW; i++) for (let j = 0; j < GD; j++) {
+        const v = ((i * 7 + j * 13) % 5) / 5;
+        const base = v < 0.34 ? "#cba36c" : v < 0.67 ? "#c49b64" : "#cfa972";
+        poly(c, [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)], base, "rgba(92,60,30,0.30)", 1);
+        poly(c, [P(i, j + 0.5), P(i + 1, j + 0.5), P(i + 1, j + 0.5), P(i, j + 0.5)], null, "rgba(92,60,30,0.12)", 1);
+      }
+    }
+    // rug
+    poly(c, [P(5.3, 4.7), P(10.7, 4.7), P(10.7, 8.6), P(5.3, 8.6)], "#3b2a4a");
+    poly(c, [P(5.5, 4.9), P(10.5, 4.9), P(10.5, 8.4), P(5.5, 8.4)], "#5a3f6b");
+    poly(c, [P(5.8, 5.2), P(10.2, 5.2), P(10.2, 8.1), P(5.8, 8.1)], null, "#e0b15a", 1.5);
+    poly(c, [P(6.1, 5.5), P(9.9, 5.5), P(9.9, 7.8), P(6.1, 7.8)], null, "rgba(224,177,90,0.45)", 1);
+    // soft shade where the walls meet the floor
+    poly(c, [P(0, 0), P(GW, 0), P(GW, 0.7), P(0, 0.7)], "rgba(40,25,10,0.13)");
+    poly(c, [P(0, 0), P(0.7, 0), P(0.7, GD), P(0, GD)], "rgba(40,25,10,0.13)");
+
+    // ----- right wall (plane y = 0) -----
+    // ----- right wall (plane y = 0) -----
+    const wallPat = wallTexture(c);
+    g = c.createLinearGradient(0, P(0, 0, H).y, 0, P(0, 0, 0).y + GW * TH);
+    g.addColorStop(0, "#efeadf"); g.addColorStop(1, "#d8d1c0");
+    poly(c, [P(0, 0, 0), P(GW, 0, 0), P(GW, 0, H), P(0, 0, H)], wallPat || g);
+    poly(c, [P(0, 0, 0), P(GW, 0, 0), P(GW, 0, 34), P(0, 0, 34)], "#c9bfa9");                // wainscot
+    poly(c, [P(0, 0, 34), P(GW, 0, 34), P(GW, 0, 37), P(0, 0, 37)], "#f6f1e7");
+    poly(c, [P(0, 0, 0), P(GW, 0, 0), P(GW, 0, 7), P(0, 0, 7)], "#6b4a2f");                   // baseboard
+    poly(c, [P(0, 0, H), P(GW, 0, H), P(GW, -0.3, H), P(0, -0.3, H)], "#f4efe4");               // top cap
+    poly(c, [P(GW, 0, 0), P(GW, -0.3, 0), P(GW, -0.3, H), P(GW, 0, H)], "#b9b09c");             // end face
+    // ----- left wall (plane x = 0) -----
+    g = c.createLinearGradient(0, P(0, 0, H).y, 0, P(0, GD, 0).y);
+    g.addColorStop(0, "#d5e2da"); g.addColorStop(1, "#b8cbc0");
+    poly(c, [P(0, 0, 0), P(0, GD, 0), P(0, GD, H), P(0, 0, H)], wallPat || g);
+    poly(c, [P(0, 0, 0), P(0, GD, 0), P(0, GD, 34), P(0, 0, 34)], "#a3b8ac");
+    poly(c, [P(0, 0, 34), P(0, GD, 34), P(0, GD, 37), P(0, 0, 37)], "#e9f0eb");
+    poly(c, [P(0, 0, 0), P(0, GD, 0), P(0, GD, 7), P(0, 0, 7)], "#6b4a2f");
+    poly(c, [P(0, 0, H), P(0, GD, H), P(-0.3, GD, H), P(-0.3, 0, H)], "#eef4ef");
+    poly(c, [P(0, GD, 0), P(-0.3, GD, 0), P(-0.3, GD, H), P(0, GD, H)], "#96a89d");
+
+    // ----- windows -----
+    function windowR(gx0, gx1, z0, z1) {
+      onFaceX(c, 0, 0, 0, () => {
+        c.fillStyle = "#f7f3ea"; c.fillRect(gx0 - 0.09, z0 - 5, gx1 - gx0 + 0.18, z1 - z0 + 10);
+        const s = c.createLinearGradient(0, z0, 0, z1); s.addColorStop(0, sk.bot); s.addColorStop(1, sk.top);
+        c.fillStyle = s; c.fillRect(gx0, z0, gx1 - gx0, z1 - z0);
+        c.fillStyle = sk.night ? "#0a0f26" : "#7d97b8";                                        // skyline
+        [[0.0, 0.34, 16], [0.4, 0.3, 26], [0.76, 0.28, 12], [1.1, 0.36, 30], [1.52, 0.3, 20], [1.9, 0.4, 14], [2.34, 0.3, 24]].forEach(([u, w, hh]) => {
+          if (gx0 + u + w <= gx1) c.fillRect(gx0 + u, z0, w, hh);
+        });
+        if (sk.night) { c.fillStyle = "#fff"; [[0.2, 52], [0.9, 60], [1.5, 48], [2.1, 63], [1.2, 40]].forEach(([u, v]) => { if (gx0 + u < gx1) c.fillRect(gx0 + u, z0 + v, 0.04, 1.6); });
+          c.fillStyle = "#fde68a"; c.fillRect(gx1 - 0.7, z1 - 16, 0.13, 8); }
+        else { c.fillStyle = "rgba(255,255,255,0.7)"; c.fillRect(gx0 + 0.3, z1 - 18, 0.7, 6); c.fillRect(gx0 + 1.5, z1 - 26, 0.9, 6); }
+        c.fillStyle = "#f7f3ea"; c.fillRect((gx0 + gx1) / 2 - 0.05, z0, 0.1, z1 - z0); c.fillRect(gx0, (z0 + z1) / 2 - 1.5, gx1 - gx0, 3);
+      });
+    }
+    function windowL(gy0, gy1, z0, z1) {
+      onFaceY(c, 0, 0, 0, () => {
+        c.fillStyle = "#f2f6f1"; c.fillRect(gy0 - 0.09, z0 - 5, gy1 - gy0 + 0.18, z1 - z0 + 10);
+        const s = c.createLinearGradient(0, z0, 0, z1); s.addColorStop(0, sk.bot); s.addColorStop(1, sk.top);
+        c.fillStyle = s; c.fillRect(gy0, z0, gy1 - gy0, z1 - z0);
+        c.fillStyle = sk.night ? "#0a0f26" : "#7d97b8";
+        [[0.0, 0.34, 22], [0.42, 0.3, 14], [0.8, 0.34, 28], [1.25, 0.3, 18], [1.66, 0.4, 24], [2.1, 0.3, 12]].forEach(([u, w, hh]) => { if (gy0 + u + w <= gy1) c.fillRect(gy0 + u, z0, w, hh); });
+        if (sk.night) { c.fillStyle = "#fff"; [[0.3, 55], [1.0, 62], [1.8, 50], [2.2, 58]].forEach(([u, v]) => { if (gy0 + u < gy1) c.fillRect(gy0 + u, z0 + v, 0.04, 1.6); }); }
+        c.fillStyle = "#f2f6f1"; c.fillRect((gy0 + gy1) / 2 - 0.05, z0, 0.1, z1 - z0); c.fillRect(gy0, (z0 + z1) / 2 - 1.5, gy1 - gy0, 3);
+      });
+    }
+    windowR(0.9, 3.5, 44, 114);
+    windowL(1.0, 3.6, 44, 114);
+    // light falling through the windows
+    if (!sk.night) {
+      poly(c, [P(1.0, 0.1), P(3.4, 0.1), P(4.6, 3.4), P(2.2, 3.4)], "rgba(255,244,214,0.13)");
+      poly(c, [P(0.1, 1.1), P(0.1, 3.5), P(3.0, 4.7), P(3.0, 2.3)], "rgba(255,244,214,0.10)");
+    }
+
+    // ----- neon sign (right wall) -----
+    onFaceX(c, 0, 0, 0, () => {
+      c.fillStyle = "#1b1428"; c.fillRect(5.15, 72, 4.0, 40);
+      c.fillStyle = "#e0b15a";
+      c.fillRect(5.22, 75, 3.86, 1.6); c.fillRect(5.22, 107.4, 3.86, 1.6);
+      c.fillRect(5.22, 75, 0.04, 34); c.fillRect(9.04, 75, 0.04, 34);
+    });
+    textRight(c, 5.55, 0, 90, () => {
+      const f = brandFont();
+      c.font = `${f.style} 700 23px ${f.family}`; c.fillStyle = "#ffd98a"; c.shadowColor = "#e0a13a"; c.shadowBlur = 14;
+      c.fillText(brandName(), 0, 0); c.shadowBlur = 0;
+      c.font = `600 9px ${UI_FONT}`; c.fillStyle = "#b9a98a"; c.fillText("agent town", 60, 12);
+    });
+    // framed art (right wall)
+    onFaceX(c, 0, 0, 0, () => {
+      c.fillStyle = "#3a2a20"; c.fillRect(12.3, 56, 1.35, 52);
+      c.fillStyle = "#f2e6d0"; c.fillRect(12.4, 60, 1.15, 44);
+      c.fillStyle = "#c98b4a"; c.fillRect(12.62, 74, 0.28, 16);      // bottle
+      c.fillStyle = "#e0b15a"; c.fillRect(12.68, 90, 0.16, 5);
+      c.fillStyle = "#8a5a2b"; c.fillRect(12.98, 74, 0.34, 12);
+      // small abstract disc, in the gap between the neon sign and the framed bottle
+      c.fillStyle = "#5a3f6b"; c.beginPath(); c.ellipse(10.15, 84, 0.2, 8, 0, 0, 7); c.fill();
+      c.fillStyle = "#e0b15a"; c.beginPath(); c.ellipse(10.15, 84, 0.1, 4, 0, 0, 7); c.fill();
+    });
+    // ----- left wall: the (wide) team board frame -----
+    onFaceY(c, 0, 0, 0, () => {
+      c.fillStyle = "#4a4038"; c.fillRect(3.75, 36, 7.0, 76);
+      c.fillStyle = "#fbfaf6"; c.fillRect(3.87, 40, 6.76, 68);
+    });
+  }
+
+  /* ============================ FURNITURE ============================ */
+  function chairAt(c, cx, cy, col) {
+    isoBox(c, cx + 0.42, cy + 0.42, 0.16, 0.16, 0, 14, "#22262f");
+    poly(c, [P(cx + 0.1, cy + 0.5, 0.5), P(cx + 0.5, cy + 0.9, 0.5), P(cx + 0.9, cy + 0.5, 0.5), P(cx + 0.5, cy + 0.1, 0.5)], "rgba(0,0,0,0.14)");
+    isoBox(c, cx + 0.12, cy + 0.03, 0.76, 0.14, 20, 32, col);                             // backrest
+    isoBox(c, cx + 0.12, cy + 0.14, 0.76, 0.72, 14, 8, col, { top: shade(col, 0.22) });   // seat
+  }
+
+  function chairWest(c, cx, cy, col) {
+    isoBox(c, cx + 0.42, cy + 0.42, 0.16, 0.16, 0, 14, "#22262f");
+    poly(c, [P(cx + 0.1, cy + 0.5, 0.5), P(cx + 0.5, cy + 0.9, 0.5), P(cx + 0.9, cy + 0.5, 0.5), P(cx + 0.5, cy + 0.1, 0.5)], "rgba(0,0,0,0.14)");
+    isoBox(c, cx + 0.03, cy + 0.12, 0.14, 0.76, 20, 32, col);                              // backrest (west)
+    isoBox(c, cx + 0.14, cy + 0.12, 0.72, 0.76, 14, 8, col, { top: shade(col, 0.22) });    // seat
+  }
+
+  function deskAt(c, id, ws, mode, t) {
+    const x = ws.x, y = ws.y;
+    isoBox(c, x, y, 2, 1, 0, 34, "#a4714a", { top: "#cf9a68", right: "#7c5334" });
+    onFaceX(c, x, y + 1, 0, () => {                                                           // drawers
+      c.fillStyle = "rgba(0,0,0,0.16)"; c.fillRect(1.15, 4, 0.75, 24); c.fillRect(0.1, 4, 0.9, 24);
+      c.fillStyle = "#e6c79a"; c.fillRect(0.5, 22, 0.15, 2); c.fillRect(1.5, 22, 0.15, 2);
+    });
+    // name plate on the front edge: name, plus a small department tag in that department's colour
+    textRight(c, x + 0.16, y + 1, 5, () => {
+      c.font = `700 9px ${UI_FONT}`; c.fillStyle = "#f6e7cf"; c.fillText(nameOf(id), 0, 0);
+      const dep = departmentOf(id), dw = dep.length * 3.7 + 10;
+      c.fillStyle = deptColor(id); rr(c, 0, 5, dw, 10, 4); c.fill();
+      c.font = `700 7px ${UI_FONT}`; c.fillStyle = "#0e0b18"; c.fillText(dep.toUpperCase(), 4, 12.5);
+    });
+    // things on the desk (the agent sits at the west end and faces east, so the monitor is further along)
+    isoBox(c, x + 0.16, y + 0.24, 0.34, 0.52, 34, 2.4, "#2a2f3b");                           // keyboard
+    isoBox(c, x + 0.24, y + 0.84, 0.14, 0.12, 34, 2.4, "#3a4152");                           // mouse
+    isoBox(c, x + 0.92, y + 0.12, 0.15, 0.15, 34, 7, "#f4f6f9");                             // mug
+    poly(c, [P(x + 0.68, y + 0.5, 34.3), P(x + 1.0, y + 0.5, 34.3), P(x + 1.0, y + 0.9, 34.3), P(x + 0.68, y + 0.9, 34.3)], "#fbfaf4");   // paper
+    // monitor: its screen faces the agent (west); we see the back
+    isoBox(c, x + 1.3, y + 0.35, 0.3, 0.3, 34, 3, "#1b1f2a");
+    isoBox(c, x + 1.42, y + 0.47, 0.08, 0.08, 37, 9, "#232837");
+    isoBox(c, x + 1.34, y + 0.13, 0.09, 0.74, 45, 26, "#171b25", { top: "#2c3346", right: "#12151d", left: "#1b1f2b" });
+    onFaceY(c, x + 1.43, y + 0.13, 45, () => { c.fillStyle = "#2b3244"; c.beginPath(); c.ellipse(0.37, 13, 0.05, 2.2, 0, 0, 7); c.fill(); });
+    if (mode === "working") {                                                                 // screen light on the desk + rim glow
+      const p = P(x + 1.0, y + 0.5, 35), col = alpha(PLUMB.working, 0.30 + 0.08 * Math.sin(t * 6));
+      const g = c.createRadialGradient(p.x, p.y, 2, p.x, p.y, 46); g.addColorStop(0, col); g.addColorStop(1, "rgba(56,189,248,0)");
+      c.fillStyle = g; c.fillRect(p.x - 50, p.y - 30, 100, 60);
+      poly(c, [P(x + 1.34, y + 0.13, 71.4), P(x + 1.43, y + 0.13, 71.4), P(x + 1.43, y + 0.87, 71.4), P(x + 1.34, y + 0.87, 71.4)], PLUMB.working);
+    }
+  }
+
+  function ceoDesk(c, S, t) {
+    const d = W.CEO, x = d.x, y = d.y;
+    isoBox(c, x, y, d.w, 1, 0, 36, "#4a3324", { top: "#6b4a34", right: "#33221a" });
+    onFaceX(c, x, y + 1, 0, () => {
+      c.fillStyle = "rgba(0,0,0,0.22)"; for (let i = 0; i < d.w; i++) c.fillRect(i + 0.08, 4, 0.84, 26);
+      c.fillStyle = "#e0b15a"; for (let i = 0; i < d.w; i++) c.fillRect(i + 0.44, 22, 0.12, 2);
+    });
+    textRight(c, x + 0.18, y + 1, 5, () => { c.font = `700 9px Georgia,serif`; c.fillStyle = "#f0d9a5"; c.fillText("CEO", 0, 0); });
+    isoBox(c, x + 0.35, y + 0.35, 0.7, 0.5, 36, 2, "#8b93a3", { top: "#c8ceda" });          // laptop base
+    isoBox(c, x + 0.35, y + 0.35, 0.7, 0.06, 38, 20, "#8b93a3", { top: "#a9b0bf" });         // laptop screen
+    isoBox(c, x + 1.6, y + 0.3, 0.14, 0.14, 36, 5, "#2f3648");                               // lamp base
+    isoBox(c, x + 1.64, y + 0.34, 0.06, 0.06, 41, 24, "#2f3648");
+    isoBox(c, x + 1.45, y + 0.2, 0.42, 0.2, 65, 5, "#e0b15a");
+    // report tray with papers
+    isoBox(c, x + 2.1, y + 0.3, 0.7, 0.55, 36, 2, "#2b3140");
+    for (let i = 0; i < S.ceo.papers; i++) isoBox(c, x + 2.16, y + 0.36, 0.58, 0.42, 38 + i * 1.6, 1.4, "#fdfcf7", { top: "#ffffff", right: "#d9d6ca" });
+    if (S.ceo.pulse > 0) {
+      const p = P(x + 2.4, y + 0.55, 46), k = S.ceo.pulse;
+      c.strokeStyle = `rgba(251,191,36,${k})`; c.lineWidth = 2; c.beginPath(); c.arc(p.x, p.y, 8 + (1.2 - k) * 22, 0, 7); c.stroke();
+    }
+    // attention marker when a plan is waiting for approval
+    if (S.attention) {
+      const p = P(x + 1.5, y + 0.5, 100 + 4 * Math.sin(t * 4));
+      c.fillStyle = "rgba(251,146,60,0.28)"; c.beginPath(); c.arc(p.x, p.y, 17 + 2 * Math.sin(t * 5), 0, 7); c.fill();
+      c.fillStyle = PLUMB.waiting; c.beginPath(); c.arc(p.x, p.y, 12, 0, 7); c.fill();
+      c.fillStyle = "#fff"; c.font = `800 16px ${UI_FONT}`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("!", p.x, p.y + 1); c.textAlign = "left"; c.textBaseline = "alphabetic";
+    }
+    // the CEO's own chair (empty: it's you)
+    chairAt(c, W.CEO.chair[0], W.CEO.chair[1], "#2d2438");
+  }
+
+  function sofa(c) {
+    const f = W.FURNITURE.sofa, col = "#5c6f95";
+    isoBox(c, f.x, f.y, f.w, 1, 0, 16, col, { top: shade(col, 0.1) });
+    isoBox(c, f.x, f.y, f.w, 0.3, 16, 30, col, { top: shade(col, 0.2) });
+    isoBox(c, f.x, f.y + 0.3, 0.26, 0.7, 16, 14, col, { top: shade(col, 0.2) });
+    isoBox(c, f.x + f.w - 0.26, f.y + 0.3, 0.26, 0.7, 16, 14, col, { top: shade(col, 0.2) });
+    for (let i = 0; i < 3; i++) isoBox(c, f.x + 0.28 + i * 0.82, f.y + 0.32, 0.78, 0.66, 16, 5, "#6c80a8", { top: "#7c90b8" });
+    isoBox(c, f.x + 0.5, f.y + 0.35, 0.3, 0.16, 21, 10, "#e0b15a");                          // cushion
+  }
+  function table(c) {
+    const f = W.FURNITURE.table;
+    isoBox(c, f.x, f.y, f.w, f.d, 0, 15, "#5b4030", { top: "#8a6448" });
+    isoBox(c, f.x + 0.2, f.y + 0.25, 0.5, 0.4, 15, 3, "#e8e2d4");
+    isoBox(c, f.x + 1.15, f.y + 0.3, 0.2, 0.2, 15, 7, "#f4f6f9");
+  }
+  function bookshelf(c) {
+    const f = W.FURNITURE.shelf;
+    isoBox(c, f.x, f.y, f.w, 0.7, 0, 104, "#7a5230", { top: "#9a6c40" });
+    onFaceX(c, f.x, f.y + 0.7, 0, () => {
+      c.fillStyle = "#4a2f18"; c.fillRect(0.08, 6, f.w - 0.16, 94);
+      [4, 30, 56, 82].forEach((z, r) => {
+        c.fillStyle = "#7a5230"; c.fillRect(0.05, z, f.w - 0.1, 3);
+        let u = 0.12, k = r * 3;
+        while (u < f.w - 0.3) {
+          const w = 0.12 + ((k * 7) % 5) * 0.03, hh = 16 + ((k * 11) % 9);
+          c.fillStyle = ["#c0504d", "#e0b15a", "#4f81bd", "#6aa84f", "#8e7cc3", "#e8e2d4", "#d9825b"][k % 7];
+          c.fillRect(u, z + 3, w, hh); u += w + 0.02; k++;
+        }
+      });
+    });
+  }
+  function kitchenette(c) {
+    const f = W.FURNITURE.counter;
+    isoBox(c, f.x, f.y, f.w, 1, 0, 38, "#474d5b", { top: "#ded9cc" });
+    isoBox(c, f.x + 0.3, f.y + 0.2, 0.55, 0.55, 38, 26, "#2a2e39");
+    isoBox(c, f.x + 0.4, f.y + 0.3, 0.35, 0.35, 45, 4, "#f87171");
+    isoBox(c, f.x + 1.25, f.y + 0.4, 0.16, 0.16, 38, 6, "#f4f6f9");
+    isoBox(c, f.x + 1.5, f.y + 0.4, 0.16, 0.16, 38, 6, "#f4f6f9");
+  }
+  function cooler(c) {
+    const f = W.FURNITURE.cooler;
+    isoBox(c, f.x + 0.15, f.y + 0.15, 0.7, 0.7, 0, 46, "#e8eef5", { top: "#ffffff", right: "#c5cedb" });
+    isoBox(c, f.x + 0.28, f.y + 0.28, 0.44, 0.44, 46, 26, "#9bd6f5", { top: "#c7ebff", right: "#6fb7de" });
+    isoBox(c, f.x + 0.4, f.y + 0.82, 0.2, 0.04, 30, 4, "#3b82f6");
+  }
+  // A glass display case with a few items on show -- the office's "storefront" moment.
+  function bottle(c, gx, gy, z0, col, capCol, h) {
+    isoBox(c, gx + 0.06, gy + 0.06, 0.2, 0.2, z0, h * 0.62, col, { top: shade(col, 0.28) });     // body
+    isoBox(c, gx + 0.1, gy + 0.1, 0.12, 0.12, z0 + h * 0.62, h * 0.14, shade(col, -0.1));         // shoulder
+    isoBox(c, gx + 0.12, gy + 0.12, 0.08, 0.08, z0 + h * 0.76, h * 0.24, capCol, { top: shade(capCol, 0.3) }); // cap
+    const p = P(gx + 0.1, gy + 0.06, z0 + h * 0.3);
+    c.fillStyle = "rgba(255,255,255,0.55)"; c.fillRect(p.x - 1, p.y - h * 0.16, 1.6, h * 0.28);   // glass highlight
+  }
+  function showcase(c) {
+    const f = W.FURNITURE.showcase, x = f.x, y = f.y;
+    isoBox(c, x, y, f.w, f.d, 0, 30, "#2b3140", { top: "#3a4258", right: "#1c212c" });             // cabinet base
+    isoBox(c, x + 0.05, y + 0.05, f.w - 0.1, f.d - 0.1, 30, 2, "#dcecf5", { top: "#eef8ff" });     // glass shelf
+    isoBox(c, x, y, f.w, f.d, 32, 30, "#bcdcec", { top: "rgba(255,255,255,0.22)", right: "rgba(255,255,255,0.10)", edge: "rgba(255,255,255,0.35)" }); // glass box
+    const palette = ["#c98b4a", "#b25a7a", "#6a8fae", "#8a6bb0", "#3fae8f"];
+    for (let i = 0; i < 4; i++) {                                   // small display boxes
+      const col = palette[i % palette.length], h = 10 + (i % 3) * 5;
+      isoBox(c, x + 0.15 + i * (f.w - 0.45) / 3, y + f.d / 2 - 0.15, 0.3, 0.3, 32, h, col, { top: shade(col, 0.28) });
+    }
+    // little sign on the front of the cabinet
+    textRight(c, x + 0.1, y + f.d, 8, () => {
+      const bn = brandName();
+      c.font = `italic 700 7.5px Georgia,serif`; c.fillStyle = "#f6e7cf"; c.fillText(bn + " showcase", 0, 0);
+    });
+  }
+  function plant(c, gx, gy, big) {
+    isoBox(c, gx + 0.25, gy + 0.25, 0.5, 0.5, 0, 16, "#b5651d", { top: "#3b2a1e" });
+    const p = P(gx + 0.5, gy + 0.5, 16), n = big ? 9 : 7;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, lx = Math.cos(a) * 14, ly = -14 - (i % 3) * 9 - Math.sin(a) * 4;
+      c.fillStyle = ["#2f9e5b", "#3fb96e", "#278a4d"][i % 3];
+      c.beginPath(); c.ellipse(p.x + lx, p.y + ly, 7, 15, a * 0.5, 0, Math.PI * 2); c.fill();
+    }
+  }
+
+  /* ============================= CHARACTERS ============================= */
+  function drawPlumbob(c, x, y, color, t, seed) {
+    const spin = Math.cos(t * 2.2 + seed), w = 6.5 * (0.3 + 0.7 * Math.abs(spin));
+    const g = c.createRadialGradient(x, y, 1, x, y, 20); g.addColorStop(0, color + "88"); g.addColorStop(1, color + "00");
+    c.fillStyle = g; c.fillRect(x - 22, y - 22, 44, 44);
+    const T = { x, y: y - 11 }, B = { x, y: y + 11 }, L = { x: x - w, y }, R = { x: x + w, y }, E = { x: x + spin * w * 0.55, y };
+    poly(c, [T, L, B, R], color);
+    poly(c, [T, E, B, R], "rgba(255,255,255,0.32)");
+    poly(c, [T, L, B, R], null, "rgba(0,0,0,0.25)", 1);
+  }
+
+  function bubble(c, x, y, text, big) {
+    c.font = `600 ${big ? 15 : 13}px ${UI_FONT}`;
+    const w = Math.max(30, c.measureText(text).width + 18), h = 26;
+    c.save(); c.shadowColor = "rgba(0,0,0,0.25)"; c.shadowBlur = 8; c.shadowOffsetY = 2;
+    c.fillStyle = "rgba(255,255,255,0.97)"; rr(c, x - w / 2, y - h, w, h, 9); c.fill();
+    c.beginPath(); c.moveTo(x - 5, y - 1); c.lineTo(x + 3, y - 1); c.lineTo(x - 1, y + 7); c.closePath(); c.fill(); c.restore();
+    c.fillStyle = "#1a1626"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(text, x, y - h / 2 + 1); c.textAlign = "left"; c.textBaseline = "alphabetic";
+  }
+
+  function drawActor(c, a, S, t, hovered) {
+    const L = lookOf(a.id), sit = a.pose === "sit", p = P(a.x, a.y, 0);
+    const sdx = a.fx - a.fy, sdy = (a.fx + a.fy) / 2, n = Math.hypot(sdx, sdy) || 1, ux = sdx / n, uy = sdy / n;
+    const front = uy > -0.22, prof = Math.abs(uy) < 0.2 && Math.abs(ux) > 0.9;
+    const moving = a.moving, sw = moving ? 1 : 0;
+    const bob = moving ? Math.abs(Math.sin(a.phase)) * 2 : (sit ? 0 : Math.sin(t * 1.6 + a.phase) * 0.5);
+    const working = a.mode === "working" && sit && a.at === "desk";
+
+    c.save(); c.translate(p.x, p.y);
+    // shadow (+ hover ring)
+    c.save(); c.scale(1, 0.46);
+    const sh = c.createRadialGradient(0, 0, 3, 0, 0, 20); sh.addColorStop(0, "rgba(0,0,0,0.34)"); sh.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = sh; c.beginPath(); c.arc(0, 0, 20, 0, 7); c.fill();
+    if (hovered) { c.strokeStyle = L.shirt; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, 27, 0, 7); c.stroke(); }
+    c.restore();
+
+    const hipY = sit ? -22 : -28 - bob, shY = hipY - 22, headY = shY - 12;
+    const legW = 7.5, tw = prof ? 15 : 21 - 4 * Math.abs(ux);
+
+    // legs
+    c.lineCap = "round"; c.lineJoin = "round";
+    for (let i = 0; i < 2; i++) {
+      const side = i ? 1 : -1, hx = side * (prof ? 2.4 : 4.6);
+      if (sit) {
+        const kx = hx + ux * 13, ky = hipY + 2 + uy * 4;
+        c.strokeStyle = L.pants; c.lineWidth = legW; c.beginPath(); c.moveTo(hx, hipY); c.lineTo(kx, ky); c.lineTo(kx, ky + 14); c.stroke();
+        c.fillStyle = "#1c2029"; c.beginPath(); c.ellipse(kx + ux * 2, ky + 16, 5, 3, 0, 0, 7); c.fill();
+      } else {
+        const ph = Math.sin(a.phase + i * Math.PI) * sw, lift = Math.max(0, Math.sin(a.phase + i * Math.PI + 1.2)) * 3 * sw;
+        const fx = hx + ux * ph * 8, fy = -3 + uy * ph * 4 - lift;
+        c.strokeStyle = L.pants; c.lineWidth = legW; c.beginPath(); c.moveTo(hx, hipY); c.lineTo(fx, fy); c.stroke();
+        c.fillStyle = "#1c2029"; c.beginPath(); c.ellipse(fx + ux * 2, fy + 1, 5.2, 3, 0, 0, 7); c.fill();
+      }
+    }
+    // torso
+    const tg = c.createLinearGradient(-tw / 2, 0, tw / 2, 0);
+    tg.addColorStop(0, shade(L.shirt, 0.14)); tg.addColorStop(1, shade(L.shirt, -0.16));
+    c.fillStyle = tg; rr(c, -tw / 2, shY, tw, hipY - shY + 4, 6); c.fill();
+    c.strokeStyle = "rgba(0,0,0,0.18)"; c.lineWidth = 1; c.stroke();
+    if (front && !prof) {
+      c.fillStyle = "rgba(255,255,255,0.85)"; c.beginPath(); c.moveTo(-4.5, shY); c.lineTo(0, shY + 7); c.lineTo(4.5, shY); c.closePath(); c.fill();   // collar
+      if (L.tie) { c.fillStyle = L.tie; c.beginPath(); c.moveTo(-1.8, shY + 3); c.lineTo(1.8, shY + 3); c.lineTo(2.6, shY + 17); c.lineTo(0, shY + 20); c.lineTo(-2.6, shY + 17); c.closePath(); c.fill(); }
+    }
+    // arms
+    for (let i = 0; i < 2; i++) {
+      const side = i ? 1 : -1, sx = side * (tw / 2 - 1.5), sy = shY + 4;
+      let hx, hy;
+      if (sit) {
+        const typing = working ? Math.sin(t * 13 + i * Math.PI) * 1.8 : 0;
+        hx = sx * 0.8 + ux * 6; hy = hipY + 1 + typing + (working ? 0 : 3);
+      } else {
+        const ph = Math.sin(a.phase + (i ? 0 : Math.PI)) * sw;
+        hx = sx + ux * ph * 7; hy = hipY + 4 + uy * ph * 3;
+      }
+      c.strokeStyle = shade(L.shirt, -0.06); c.lineWidth = 6; c.beginPath(); c.moveTo(sx, sy); c.lineTo(hx, hy); c.stroke();
+      c.fillStyle = L.skin; c.beginPath(); c.arc(hx, hy + 1, 3.2, 0, 7); c.fill();
+      if (a.carry && i === 1) {                                                       // report in hand
+        c.save(); c.translate(hx + 2, hy - 4); c.rotate(-0.12);
+        c.fillStyle = "#fffef8"; c.fillRect(-7, -9, 14, 18); c.strokeStyle = "rgba(0,0,0,0.25)"; c.strokeRect(-7, -9, 14, 18);
+        c.fillStyle = "#c9c4b4"; for (let k = 0; k < 4; k++) c.fillRect(-4.5, -6 + k * 4, 9, 1.4);
+        c.fillStyle = "#e0b15a"; c.fillRect(-7, -9, 14, 3); c.restore();
+      }
+    }
+    // neck + head
+    c.fillStyle = shade(L.skin, -0.08); c.fillRect(-3, shY - 5, 6, 7);
+    const hx0 = ux * 1.6, R = 11;
+    const hairFill = c.createLinearGradient(0, headY - R, 0, headY + R); hairFill.addColorStop(0, shade(L.hair, 0.12)); hairFill.addColorStop(1, L.hair);
+    const long = hairStyleOf(a.id) === "long", bobStyle = hairStyleOf(a.id) === "bob", beard = hasBeard(a.id);
+    if ((long || bobStyle) && front) {                                                // hair behind the head
+      c.fillStyle = hairFill; rr(c, hx0 - R - 1.6, headY - R + 1, (R + 1.6) * 2, (long ? 34 : 22), 9); c.fill();
+    }
+    const skinG = c.createRadialGradient(hx0 - 3, headY - 3, 2, hx0, headY, R + 2); skinG.addColorStop(0, shade(L.skin, 0.12)); skinG.addColorStop(1, L.skin);
+    c.fillStyle = skinG; c.beginPath(); c.arc(hx0, headY, R, 0, 7); c.fill();
+    if (!front) {                                                                    // seen from behind: hair covers the head
+      c.fillStyle = hairFill; c.beginPath(); c.arc(hx0, headY, R + 0.6, 0, 7); c.fill();
+      if (long || bobStyle) { rr(c, hx0 - R - 1, headY - 2, (R + 1) * 2, long ? 26 : 15, 8); c.fill(); }
+    } else {
+      // face
+      const ex = prof ? [ux * 5.2] : [-4.2 + ux * 2.6, 4.2 + ux * 2.6], talk = a.bubble && a.bubble.text.length > 3 && Math.sin(t * 16) > 0;
+      ex.forEach(x => {
+        c.fillStyle = "#fff"; c.beginPath(); c.ellipse(hx0 + x, headY + 1.2, 2.5, a.blink > 0 ? 0.5 : 3, 0, 0, 7); c.fill();
+        if (!a.blink) { c.fillStyle = "#1c1a24"; c.beginPath(); c.arc(hx0 + x + ux * 0.9, headY + 1.6, 1.5, 0, 7); c.fill(); }
+      });
+      c.strokeStyle = shade(L.hair, -0.1); c.lineWidth = 1.2;
+      ex.forEach(x => { c.beginPath(); c.moveTo(hx0 + x - 3, headY - 3); c.lineTo(hx0 + x + 3, headY - 3.6); c.stroke(); });
+      c.fillStyle = "rgba(240,120,120,0.28)";
+      if (!prof) { c.beginPath(); c.arc(hx0 - 7 + ux * 2, headY + 5.5, 2.4, 0, 7); c.arc(hx0 + 7 + ux * 2, headY + 5.5, 2.4, 0, 7); c.fill(); }
+      if (L.beard && beard) { c.fillStyle = L.beard; c.beginPath(); c.ellipse(hx0 + (prof ? ux * 2 : ux * 1.6), headY + 5.5, prof ? 6 : 8.5, 6.2, 0, 0, Math.PI); c.fill(); }
+      c.strokeStyle = beard ? "#e8d5c4" : "#a3554d"; c.fillStyle = "#7a2f38"; c.lineWidth = 1.4;
+      const mx = hx0 + (prof ? ux * 3 : ux * 2.4), my = headY + 7.6;
+      if (talk) { c.beginPath(); c.ellipse(mx, my, 2.2, 1.9, 0, 0, 7); c.fill(); }
+      else { c.beginPath(); c.moveTo(mx - 2.8, my - 0.6); c.quadraticCurveTo(mx, my + 2, mx + 2.8, my - 0.6); c.stroke(); }
+      // front hair
+      c.fillStyle = hairFill; c.beginPath(); c.ellipse(hx0, headY - 4.5, R + 0.9, 8.2, 0, Math.PI, 0); c.fill();
+      c.beginPath(); c.moveTo(hx0 - R, headY - 2); c.quadraticCurveTo(hx0 - 2 + ux * 3, headY - 8, hx0 + R * 0.75, headY - 3.5); c.lineTo(hx0 + R, headY - 5); c.lineTo(hx0 - R, headY - 6); c.closePath(); c.fill();
+      if (long || bobStyle) { c.fillRect(hx0 - R - 1.6, headY - 5, 3.6, long ? 22 : 12); c.fillRect(hx0 + R - 2, headY - 5, 3.6, long ? 22 : 12); }
+    }
+    c.restore();
+
+    // ----- floating markers (not affected by the character's pose) -----
+    const top = p.y + (sit ? -70 : -76), seed = a.id.length * 1.7;
+    let state = a.mode; if (a.id === managerId() && S.attention) state = "waiting";
+    drawPlumbob(c, p.x, top - 8 + Math.sin(t * 2.4 + seed) * 2.5, PLUMB[state] || PLUMB.idle, t, seed);
+    c.font = `600 11px ${UI_FONT}`;
+    const nm = nameOf(a.id), nw = c.measureText(nm).width + 14;
+    c.fillStyle = "rgba(21,18,31,0.72)"; rr(c, p.x - nw / 2, top - 44, nw, 17, 8); c.fill();
+    c.fillStyle = "#fff"; c.textAlign = "center"; c.fillText(nm, p.x, top - 31.5);
+    c.font = `700 8.5px ${UI_FONT}`;
+    const dep = departmentOf(a.id).toUpperCase(), dw2 = c.measureText(dep).width + 12;
+    c.fillStyle = deptColor(a.id); rr(c, p.x - dw2 / 2, top - 26, dw2, 12, 6); c.fill();
+    c.fillStyle = "#0e0b18"; c.fillText(dep, p.x, top - 17.5); c.textAlign = "left";
+    const by = (S.bubbleY && S.bubbleY[a.id] !== undefined ? S.bubbleY[a.id] : top - 50) - 12;   // clear the department pill
+    if (a.bubble) bubble(c, p.x, by, a.bubble.text, a.bubble.text.length <= 3);
+    else if (working) { const dots = ".".repeat(1 + Math.floor(t * 3) % 3); bubble(c, p.x, by, "Working" + dots); }
+    if (hovered) {
+      c.font = `500 11px ${UI_FONT}`; const tip = designationOf(a.id) + " (" + departmentOf(a.id) + ") \u2014 click to give a task", tw2 = c.measureText(tip).width + 16;
+      c.fillStyle = "rgba(21,18,31,0.9)"; rr(c, p.x - tw2 / 2, p.y + 14, tw2, 20, 8); c.fill();
+      c.fillStyle = "#f6e7cf"; c.textAlign = "center"; c.fillText(tip, p.x, p.y + 28); c.textAlign = "left";
+    }
+  }
+
+  /* ============================ THE FRAME ============================ */
+  function statusText(a, S) { return a.mode === "working" ? "working" : a.mode === "done" ? "delivered" : a.mode === "error" ? "problem" : (S.attention && a.id === managerId()) ? "waiting on you" : "free"; }
+
+  function drawTeamBoard(c, S) {
+    // whiteboard text on the left wall, right where the (widened) frame is painted
+    const ids = Object.keys(S.actors);
+    textLeft(c, 0, 8.6, 88, () => {
+      c.font = `italic 700 13px Georgia,serif`; c.fillStyle = "#3a2a20"; c.fillText("Team board", 6, 0);
+      c.font = `600 10px ${UI_FONT}`;
+      ids.forEach((id, i) => {
+        const a = S.actors[id], y = 15 + i * 12.6, col = PLUMB[a.mode] || PLUMB.idle;
+        c.fillStyle = col; c.beginPath(); c.arc(9, y - 3, 3.2, 0, 7); c.fill();
+        c.fillStyle = "#2a2233"; c.fillText(nameOf(id), 18, y);
+        c.fillStyle = "#6b6478"; c.fillText(statusText(a, S), 100, y);
+      });
+    });
+  }
+
+  // Decide the height of every speech bubble so that bubbles from nearby agents stack instead of overlapping.
+  function layoutBubbles(S) {
+    const placed = [], out = {};
+    Object.keys(S.actors).forEach(id => {
+      const a = S.actors[id], talking = a.bubble || (a.mode === "working" && a.pose === "sit" && a.at === "desk");
+      if (!talking) return;
+      const p = P(a.x, a.y, 0);
+      let y = p.y + (a.pose === "sit" ? -70 : -76) - 62, moved = true, guard = 0;
+      while (moved && guard++ < 8) {
+        moved = false;
+        for (const o of placed) if (Math.abs(o.x - p.x) < 120 && Math.abs(o.y - y) < 31) { y = o.y - 31; moved = true; }
+      }
+      placed.push({ x: p.x, y }); out[id] = y;
+    });
+    S.bubbleY = out;
+  }
+
+  function dynamicItems(S, t) {
+    const items = [];
+    const add = (depth, fn) => items.push({ depth, fn });
+    Object.entries(W.WS).forEach(([id, ws]) => {
+      const col = shade(deptColor(id), -0.45).replace("rgb(", "").replace(")", "").split(",").map(Number);
+      const chairCol = "#" + col.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("");
+      add(ws.x - 0.5 + ws.y + 0.5, c => chairWest(c, ws.x - 1, ws.y, chairCol));
+      add(ws.x + 1 + ws.y + 0.5, c => deskAt(c, id, ws, S.actors[id].mode, t));
+    });
+    add(W.CEO.x + W.CEO.w / 2 + W.CEO.y + 0.5, c => ceoDesk(c, S, t));
+    const sf = W.FURNITURE.sofa;   add(sf.x + sf.w / 2 + sf.y + 0.5, c => sofa(c));
+    const tb = W.FURNITURE.table;  add(tb.x + tb.w / 2 + tb.y + 0.5, c => table(c));
+    const sh = W.FURNITURE.shelf;  add(sh.x + sh.w / 2 + 0.35, c => bookshelf(c));
+    const ct = W.FURNITURE.counter; add(ct.x + ct.w / 2 + ct.y + 0.5, c => kitchenette(c));
+    const cl = W.FURNITURE.cooler; add(cl.x + 0.5 + cl.y + 0.5, c => cooler(c));
+    const sc = W.FURNITURE.showcase; add(sc.x + sc.w / 2 + sc.y + 0.5, c => showcase(c));
+    W.FURNITURE.plants.forEach((pl, i) => add(pl[0] + pl[1] + 1, c => plant(c, pl[0], pl[1], i === 1)));
+    Object.values(S.actors).forEach((a, i) => {
+      const ws = W.WS[a.id];
+      const depth = (a.pose === "sit" && a.at === "desk") ? ws.x + 1 + ws.y + 0.5 + 0.05 : a.x + a.y + 0.001 * i;
+      add(depth, (c, hov) => drawActor(c, a, S, t, hov === a.id));
+    });
+    items.sort((a, b) => a.depth - b.depth);
+    return items;
+  }
+
+  function drawFrame(c, S, t, hoverId, bgCanvas, view) {
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, c.canvas.width, c.canvas.height);
+    c.fillStyle = "#141126"; c.fillRect(0, 0, c.canvas.width, c.canvas.height);
+    if (bgCanvas) c.drawImage(bgCanvas, 0, 0);
+    c.setTransform(view.k, 0, 0, view.k, view.ox, view.oy);
+    drawTeamBoard(c, S);
+    layoutBubbles(S);
+    dynamicItems(S, t).forEach(it => it.fn(c, hoverId));
+    // evening / night tint and a gentle vignette, over the whole canvas
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    const cw = c.canvas.width, ch = c.canvas.height, sk = sky(hourNow());
+    if (sk.tint) { c.fillStyle = sk.tint; c.fillRect(0, 0, cw, ch); }
+    const v = c.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.42, cw / 2, ch / 2, Math.max(cw, ch) * 0.78);
+    v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(8,6,16,0.45)");
+    c.fillStyle = v; c.fillRect(0, 0, cw, ch);
+  }
+
+  /* ---------- hit testing (world coordinates) ---------- */
+  function inPoly(pt, pts) { let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i], b = pts[j];
+      if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    } return inside; }
+  function hitTest(S, wx, wy) {
+    const acts = Object.values(S.actors).sort((a, b) => (b.x + b.y) - (a.x + a.y));
+    for (const a of acts) {
+      const p = P(a.x, a.y, 0), dx = (wx - p.x) / 22, dy = (wy - (p.y - 38)) / 44;
+      if (dx * dx + dy * dy <= 1) return a.id;
+    }
+    for (const [id, ws] of Object.entries(W.WS)) {
+      const x = ws.x, y = ws.y;
+      const faces = [
+        [P(x, y, 34), P(x + 2, y, 34), P(x + 2, y + 1, 34), P(x, y + 1, 34)],
+        [P(x, y + 1, 0), P(x + 2, y + 1, 0), P(x + 2, y + 1, 34), P(x, y + 1, 34)],
+        [P(x + 2, y, 0), P(x + 2, y + 1, 0), P(x + 2, y + 1, 34), P(x + 2, y, 34)],
+      ];
+      if (faces.some(f => inPoly({ x: wx, y: wy }, f))) return id;
+    }
+    return null;
+  }
+
+  return { WORLD_W, WORLD_H, renderBackground, drawFrame, hitTest, P, lookOf, FONTS };
+})();
+
+/* ==================================================================
+   SIMS VIEW - part 3: connects the world + drawing to the page
+   Exposes window.initSimsView() rather than running immediately, so the
+   bootstrap can configure the office layout first (see bootstrap.js).
+   ================================================================== */
+window.initSimsView = function initSimsView() {
+  const stage = document.getElementById("view-sims");
+  const canvas = document.getElementById("sims-canvas");
+  if (!stage || !canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext("2d");
+  const sim = createSimulation(((window.TEAM && window.TEAM.order) || []).filter(id => SimsWorld.WS[id]));
+  const view = { k: 1, ox: 0, oy: 0, dpr: 1 };
+  let bg = null, hover = null, running = false, last = 0, clock = 0, ro = null;
+
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    if (r.width < 20 || r.height < 20) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    view.dpr = dpr;
+    view.k = Math.min(r.width / SimsDraw.WORLD_W, r.height / SimsDraw.WORLD_H) * dpr;
+    view.ox = (canvas.width - SimsDraw.WORLD_W * view.k) / 2;
+    view.oy = (canvas.height - SimsDraw.WORLD_H * view.k) / 2;
+    bg = document.createElement("canvas"); bg.width = canvas.width; bg.height = canvas.height;
+    const bctx = bg.getContext("2d");
+    bctx.setTransform(view.k, 0, 0, view.k, view.ox, view.oy);
+    SimsDraw.renderBackground(bctx);
+    draw();
+  }
+  // A wall/floor texture image finishes loading some time after the first
+  // renderBackground() call; when it does, rebuild the (cached) background.
+  SimsDraw.onTextureReady = () => { if (bg) resize(); };
+
+  function draw() { SimsDraw.drawFrame(ctx, sim.S, clock, hover, bg, view); }
+  function frame(ts) {
+    if (!running) return;
+    const dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts;
+    sim.step(dt); clock += dt; draw();
+    requestAnimationFrame(frame);
+  }
+  function worldPoint(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) * view.dpr - view.ox) / view.k, y: ((e.clientY - r.top) * view.dpr - view.oy) / view.k };
+  }
+  canvas.addEventListener("mousemove", e => {
+    const w = worldPoint(e); hover = SimsDraw.hitTest(sim.S, w.x, w.y);
+    canvas.style.cursor = hover ? "pointer" : "default";
+  });
+  canvas.addEventListener("mouseleave", () => { hover = null; canvas.style.cursor = "default"; });
+  canvas.addEventListener("click", e => {
+    const w = worldPoint(e), id = SimsDraw.hitTest(sim.S, w.x, w.y);
+    if (id && typeof openModal === "function") openModal(id);
+  });
+
+  views.register({
+    name: "sims", el: stage, display: "block",
+    activate() {
+      running = true; last = performance.now();
+      if (!ro && window.ResizeObserver) { ro = new ResizeObserver(resize); ro.observe(stage); }
+      resize(); requestAnimationFrame(frame);
+    },
+    deactivate() { running = false; },
+    setState(id, s) { sim.setState(id, s); },
+    plan() { sim.plan(); },
+    assigned(ids) { sim.assigned(ids); },
+    attention(on) { sim.attention(on); },
+  });
+
+  // handles for testing and debugging
+  window.sims = { sim, view, step(dt) { sim.step(dt); clock += dt; }, draw, resize, hitAt: (x, y) => SimsDraw.hitTest(sim.S, x, y), P: SimsDraw.P, get hover() { return hover; }, set hover(v) { hover = v; } };
+};
+
+</script>
+<script>
+(function () {
+  if (typeof Phaser === "undefined") return;
+/* ------------------------------------------------------------------ */
+/*  Pixel art helpers (everything is drawn in code, no image files)    */
+/* ------------------------------------------------------------------ */
+// Character: 14 x 14 pixels (head + upper body). Legend:
+//  o outline   h hair   s skin   e eye   m mouth   c shirt   d shirt shade
+const CHAR_ROWS = [
+  "....oooooo....",
+  "...ohhhhhho...",
+  "..ohhhhhhhho..",
+  "..ohssssssho..",
+  "..osesssseso..",
+  "..osssssssso..",
+  "...ossmmsso...",
+  "....oooooo....",
+  "..occcccccco..",
+  "..ocdccccdco..",
+  "..occcccccco..",
+  "..occcccccco..",
+  "..occcccccco..",
+  "..occcccccco..",
+];
+CHAR_ROWS.forEach((r, i) => { if (r.length !== 14) console.warn("Bad sprite row", i, r.length); });
+
+function buildCharTexture(scene, key, agent, frame) {
+  const g = scene.make.graphics({ x: 0, y: 0, add: false });
+  const pal = {
+    o: 0x111318, h: agent.hair, s: 0xf1c9a5, e: 0x1a1a1a, m: 0xb5655a,
+    c: agent.shirt, d: agent.dark,
+  };
+  CHAR_ROWS.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x];
+      if (ch === ".") continue;
+      g.fillStyle(pal[ch], 1);
+      g.fillRect(x, y, 1, 1);
+    }
+  });
+  if (agent.tie) { g.fillStyle(agent.tie, 1); g.fillRect(6, 8, 2, 5); }
+  // hands on the keyboard: alternate to look like typing
+  g.fillStyle(pal.s, 1);
+  if (frame === 0) { g.fillRect(2, 12, 2, 2); g.fillRect(10, 11, 2, 2); }
+  else             { g.fillRect(2, 11, 2, 2); g.fillRect(10, 12, 2, 2); }
+  g.generateTexture(key, 14, 14);
+  g.destroy();
+}
+
+function drawChair(scene, cx, cy) {
+  const g = scene.add.graphics();
+  g.fillStyle(0x2b3040, 1); g.fillRect(cx - 14, cy - 28, 28, 28);
+  g.fillStyle(0x3a4156, 1); g.fillRect(cx - 14, cy - 28, 28, 4);
+  g.fillStyle(0x20242e, 1); g.fillRect(cx - 14, cy - 4, 28, 4);
+  return g;
+}
+
+function drawDesk(scene, cx, cy, accent) {
+  const g = scene.add.graphics();
+  // desk top
+  g.fillStyle(0x8a5a35, 1); g.fillRect(cx - 32, cy, 64, 20);
+  g.fillStyle(0xa8703f, 1); g.fillRect(cx - 32, cy, 64, 3);
+  g.fillStyle(0x6b4426, 1); g.fillRect(cx - 32, cy + 17, 64, 3);
+  // desk legs shadow
+  g.fillStyle(0x000000, 0.25); g.fillRect(cx - 30, cy + 20, 60, 3);
+  // keyboard
+  g.fillStyle(0x20242e, 1); g.fillRect(cx - 12, cy + 6, 24, 7);
+  g.fillStyle(0x3d4459, 1);
+  for (let i = 0; i < 6; i++) g.fillRect(cx - 11 + i * 4, cy + 7, 3, 2);
+  // mug
+  g.fillStyle(0xe6edf3, 1); g.fillRect(cx - 22, cy + 6, 5, 6);
+  g.fillStyle(accent, 1); g.fillRect(cx - 22, cy + 6, 5, 2);
+  // plant pot on desk corner
+  g.fillStyle(0x7c4a2b, 1); g.fillRect(cx + 26, cy + 10, 5, 4);
+  g.fillStyle(0x2ea043, 1); g.fillRect(cx + 25, cy + 6, 7, 5);
+  return g;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Scene                                                              */
+/* ------------------------------------------------------------------ */
+class TownScene extends Phaser.Scene {
+  constructor() { super("TownScene"); this.actors = {}; }
+
+  create() {
+    this.drawRoom();
+
+    for (const [id, a] of Object.entries(AGENTS)) {
+      buildCharTexture(this, `${id}_0`, a, 0);
+      buildCharTexture(this, `${id}_1`, a, 1);
+    }
+
+    for (const [id, a] of Object.entries(AGENTS)) {
+      // draw order: chair, desk, character (sits in front of the desk), monitor
+      drawChair(this, a.x, a.y);
+      drawDesk(this, a.x, a.y, a.shirt);
+      const sprite = this.add.image(a.x, a.y - 22, `${id}_0`).setOrigin(0.5, 0).setScale(2);
+
+      // monitor on the right side of the desk (back of the screen faces us;
+      // a colored glow leaks over the top edge while the agent is working)
+      const mon = this.add.graphics();
+      const mx = a.x + 22;
+      const drawMon = (glow) => {
+        mon.clear();
+        mon.fillStyle(0x0f1218, 1); mon.fillRect(mx - 11, a.y - 22, 22, 16);
+        mon.fillStyle(0x2a3040, 1); mon.fillRect(mx - 10, a.y - 21, 20, 14);
+        mon.fillStyle(0x0f1218, 1); mon.fillRect(mx - 2, a.y - 6, 4, 5);
+        mon.fillRect(mx - 6, a.y - 2, 12, 2);
+        if (glow) { mon.fillStyle(glow, 0.9); mon.fillRect(mx - 9, a.y - 24, 18, 2); }
+      };
+      drawMon(null);
+
+      // name plate
+      this.add.text(a.x, a.y + 30, `${a.name} · ${a.role}`, {
+        fontFamily: "monospace", fontSize: "9px", color: "#e6edf3",
+        backgroundColor: "#00000088", padding: { x: 3, y: 1 },
+      }).setOrigin(0.5, 0);
+
+      // status bubble
+      const bubble = this.add.container(a.x + 22, a.y - 40).setVisible(false);
+      const bg = this.add.graphics();
+      bg.fillStyle(0xffffff, 1); bg.fillRoundedRect(-14, -8, 28, 15, 4);
+      bg.fillTriangle(-8, 7, -3, 7, -10, 12);
+      const bubbleText = this.add.text(0, 0, "", {
+        fontFamily: "monospace", fontSize: "10px", color: "#0d1117", fontStyle: "bold",
+      }).setOrigin(0.5);
+      bubble.add([bg, bubbleText]);
+
+      // hover outline + click area
+      const hit = this.add.rectangle(a.x, a.y - 4, 76, 60, 0xffffff, 0).setInteractive({ useHandCursor: true });
+      const outline = this.add.graphics().setVisible(false);
+      outline.lineStyle(1, 0xffffff, 0.8);
+      outline.strokeRect(a.x - 38, a.y - 34, 76, 60);
+      hit.on("pointerover", () => outline.setVisible(true));
+      hit.on("pointerout", () => outline.setVisible(false));
+      hit.on("pointerdown", () => openModal(id));
+
+      this.actors[id] = {
+        sprite, drawMon, bubble, bubbleText, state: "idle", frame: 0, dots: 0, doneTimer: null, agent: a,
+      };
+
+      // gentle idle bob
+      this.tweens.add({
+        targets: sprite, y: sprite.y + 1, duration: 900 + Math.random() * 400,
+        yoyo: true, repeat: -1, ease: "Sine.easeInOut",
+      });
+    }
+
+    // typing / thinking animation tick
+    this.time.addEvent({ delay: 220, loop: true, callback: () => this.tick() });
+
+    window.town = this;
+    Object.entries(views.states).forEach(([id, s]) => this.setState(id, s));
+  }
+
+  drawRoom() {
+    const W = 360, H = 330;
+    const g = this.add.graphics();
+
+    // back wall
+    g.fillStyle(0x232a3d, 1); g.fillRect(0, 0, W, 62);
+    g.fillStyle(0x2c354d, 1); g.fillRect(0, 0, W, 4);
+    g.fillStyle(0x151a28, 1); g.fillRect(0, 58, W, 4);
+
+    // wooden floor with planks
+    g.fillStyle(0x3b2f2a, 1); g.fillRect(0, 62, W, H - 62);
+    for (let y = 62; y < H; y += 12) {
+      g.fillStyle(y % 24 === 2 ? 0x45372f : 0x3f322b, 1);
+      g.fillRect(0, y, W, 12);
+      g.fillStyle(0x2c221e, 1); g.fillRect(0, y, W, 1);
+      const offset = (Math.floor((y - 62) / 12) % 2) * 30;
+      for (let x = offset; x < W; x += 60) { g.fillRect(x, y, 1, 12); }
+    }
+
+    // rug in the middle
+    g.fillStyle(0x1f2a44, 1); g.fillRect(110, 150, 140, 58);
+    g.fillStyle(0x2b3a5e, 1); g.fillRect(114, 154, 132, 50);
+    g.fillStyle(0x1f2a44, 1); g.fillRect(122, 162, 116, 34);
+
+    // windows with a night sky
+    const drawWindow = (x) => {
+      g.fillStyle(0x0b0e14, 1); g.fillRect(x - 1, 9, 42, 30);
+      g.fillStyle(0x16233f, 1); g.fillRect(x, 10, 40, 28);
+      g.fillStyle(0xf5e9a8, 1); g.fillRect(x + 28, 14, 5, 5);            // moon
+      g.fillStyle(0xffffff, 1);
+      [[x + 6, 16], [x + 14, 22], [x + 22, 14], [x + 10, 30], [x + 34, 28]].forEach(([sx, sy]) => g.fillRect(sx, sy, 1, 1));
+      g.fillStyle(0x0b1224, 1);                                           // skyline
+      g.fillRect(x, 32, 6, 6); g.fillRect(x + 8, 28, 7, 10); g.fillRect(x + 18, 31, 6, 7); g.fillRect(x + 27, 26, 8, 12);
+      g.fillStyle(0xf5d76e, 1);
+      [[x + 10, 30], [x + 12, 33], [x + 29, 29], [x + 32, 32]].forEach(([sx, sy]) => g.fillRect(sx, sy, 1, 1));
+      g.fillStyle(0x6b7488, 1); g.fillRect(x + 19, 10, 2, 28);            // frame divider
+    };
+    drawWindow(18); drawWindow(260);
+
+    // neon sign
+    g.fillStyle(0x0d1117, 1); g.fillRect(112, 12, 136, 28);
+    g.lineStyle(1, 0xd29922, 1); g.strokeRect(113, 13, 134, 26);
+    const neon = String((window.OFFICE && window.OFFICE.brand_name) || "Your Company").toUpperCase().slice(0, 18);
+    this.add.text(180, 26, neon, {
+      fontFamily: "monospace", fontSize: neon.length > 11 ? "10px" : "14px", color: "#f5d76e", fontStyle: "bold",
+    }).setOrigin(0.5);
+    this.add.text(180, 46, "agent town", {
+      fontFamily: "monospace", fontSize: "8px", color: "#8b949e",
+    }).setOrigin(0.5);
+
+    // bookshelf
+    g.fillStyle(0x5a3b22, 1); g.fillRect(318, 8, 34, 50);
+    g.fillStyle(0x3a2515, 1); g.fillRect(320, 10, 30, 46);
+    [[19, 0xdb61a2], [31, 0x58a6ff], [43, 0x3fb950], [55, 0xd29922]].forEach(([y, col]) => {
+      g.fillStyle(0x5a3b22, 1); g.fillRect(320, y, 30, 2);
+      for (let i = 0; i < 6; i++) {
+        g.fillStyle(i % 2 ? col : 0xe6edf3, 1); g.fillRect(322 + i * 5, y - 9, 4, 9);
+      }
+    });
+
+    // plant in the corner
+    g.fillStyle(0x7c4a2b, 1); g.fillRect(8, 292, 14, 14);
+    g.fillStyle(0x2ea043, 1); g.fillRect(6, 276, 18, 18);
+    g.fillStyle(0x3fb950, 1); g.fillRect(10, 270, 10, 12);
+    g.fillStyle(0x56d364, 1); g.fillRect(13, 266, 4, 8);
+
+    // water cooler
+    g.fillStyle(0xcfd8e3, 1); g.fillRect(333, 280, 16, 28);
+    g.fillStyle(0x8fd3ff, 1); g.fillRect(335, 270, 12, 12);
+    g.fillStyle(0x6b7488, 1); g.fillRect(333, 298, 16, 2);
+  }
+
+  setState(id, state) {
+    const actor = this.actors[id];
+    if (!actor) return;
+    if (actor.doneTimer) { actor.doneTimer.remove(false); actor.doneTimer = null; }
+    actor.state = state;
+    if (state === "working") {
+      actor.bubble.setVisible(true);
+    } else if (state === "done") {
+      actor.bubble.setVisible(true);
+      actor.bubbleText.setText("OK!");
+      actor.drawMon(0x56d364);
+      actor.sprite.setTexture(`${id}_0`);
+      actor.doneTimer = this.time.delayedCall(9000, () => this.setState(id, "idle"));
+    } else {
+      actor.bubble.setVisible(false);
+      actor.drawMon(null);
+      actor.sprite.setTexture(`${id}_0`);
+    }
+  }
+
+  tick() {
+    for (const [id, actor] of Object.entries(this.actors)) {
+      if (actor.state !== "working") continue;
+      actor.frame = 1 - actor.frame;
+      actor.sprite.setTexture(`${id}_${actor.frame}`);
+      actor.dots = (actor.dots + 1) % 4;
+      actor.bubbleText.setText(".".repeat(actor.dots || 3));
+      actor.drawMon(actor.frame ? 0x58a6ff : 0x79c0ff);
+    }
+  }
+}
+
+
+  let game = null;
+  views.register({
+    name: "pixel", el: document.getElementById("view-pixel"), display: "flex",
+    activate() {
+      if (game) return;
+      game = new Phaser.Game({ type: Phaser.AUTO, width: 360, height: 330, zoom: 2, parent: "view-pixel",
+        backgroundColor: "#0b0e14", pixelArt: true, scene: TownScene });
+    },
+    setState(id, state) { if (window.town) window.town.setState(id, state === "error" ? "idle" : state); },
+  });
+})();
+
+</script>
+<script>
+/* ==================================================================
+   HR / Team dashboard: org chart + editable job title, department
+   and skills for every agent. Reads and writes /api/team.
+   ================================================================== */
+(function () {
+  const bg = document.getElementById("hr-bg");
+  const openBtn = document.getElementById("hr-open");
+  const closeBtn = document.getElementById("hr-close");
+  const orgEl = document.getElementById("org-chart");
+  const gridEl = document.getElementById("hr-grid");
+  const brandingEl = document.getElementById("tab-branding");
+  const layoutEl = document.getElementById("tab-layout");
+  if (!bg || !openBtn) return;
+
+  let loaded = false, brandingLoaded = false, layoutLoaded = false;
+
+  function escapeHtml(s) {
+    return (s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function initials(name) { return (name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase(); }
+
+  async function fetchTeam() {
+    const res = await fetch("/api/team");
+    const data = await res.json();
+    window.TEAM = data;         // read live by the Sims view's drawing code, too
+    return data;
+  }
+
+  async function fetchOffice() {
+    const res = await fetch("/api/office");
+    const data = await res.json();
+    window.OFFICE = data;       // read live by the Sims view's drawing code, too
+    return data;
+  }
+
+  // A POST that actually notices when the server rejected the request. FastAPI's own
+  // validation errors come back as {detail: ...}, not the {error: ...} shape our own
+  // handlers use for a known bad id -- both are checked, and a non-2xx status is never
+  // treated as success even when the body still happens to parse as JSON.
+  async function postJSON(url, body) {
+    let res;
+    try {
+      res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    } catch (e) {
+      throw new Error("Could not reach the server (" + e.message + "). Is it still running?");
+    }
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* non-JSON error body handled below */ }
+    if (!res.ok) {
+      const detail = data && (data.error || (data.detail ? JSON.stringify(data.detail) : null));
+      throw new Error(detail || `Server returned ${res.status} ${res.statusText}`);
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  }
+
+  function fileToDataUri(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("could not read the file"));
+      reader.readAsDataURL(file);
+    });
+  }
+  const ACCEPTED_IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
+  const MAX_UPLOAD_BYTES = 4_700_000;
+
+  /* ---------------- Branding & interior tab ---------------- */
+  const FALLBACK_FONT_OPTIONS = {
+    georgia: "Georgia Italic (classic, default)", playfair: "Playfair Display (elegant serif)",
+    cormorant: "Cormorant Garamond (refined serif)", poppins: "Poppins (modern, geometric)",
+    montserrat: "Montserrat (clean, wide)", bebas: "Bebas Neue (bold condensed)", pacifico: "Pacifico (playful script)",
+  };
+  const ACCEPTED_FONT_TYPES = ".woff2,.woff,.ttf,.otf";
+
+  async function renderBranding() {
+    let office;
+    try { office = window.OFFICE || await fetchOffice(); } catch (e) {
+      brandingEl.innerHTML = `<div class="hr-note">Could not load branding: ${escapeHtml(String(e))}</div>`;
+      return;
+    }
+    const fontOptions = (office.font_options && Object.keys(office.font_options).length) ? office.font_options : FALLBACK_FONT_OPTIONS;
+    const pending = {};   // only fields actually touched this session are sent on save
+
+    const previewBlock = (label, field, current, wide) => `
+      <div class="brand-field full">
+        <label>${label}</label>
+        <div class="upload-row">
+          <div class="upload-preview${wide ? " wide" : ""}" data-preview="${field}">${current ? `<img src="${current}">` : "No image"}</div>
+          <div class="upload-btns">
+            <input type="file" accept="${ACCEPTED_IMAGE_TYPES}" data-file="${field}" style="display:none">
+            <button type="button" class="pick" data-pick="${field}">Choose file&hellip;</button>
+            <button type="button" class="clear" data-clear="${field}"${current ? "" : ' style="display:none"'}>Remove</button>
+          </div>
+        </div>
+      </div>`;
+
+    const customName = office.custom_font_name || (office.custom_font ? "Uploaded font" : null);
+    const fontOptionsHtml = Object.entries(fontOptions).map(([k, label]) =>
+      `<option value="${k}" ${k === office.font_key ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")
+      + (office.custom_font ? `<option value="custom" ${office.font_key === "custom" ? "selected" : ""}>${escapeHtml(customName)} (your upload)</option>` : "");
+
+    brandingEl.innerHTML = `
+      <div class="brand-form">
+        <div class="brand-field">
+          <label>Brand name</label>
+          <input type="text" id="bf-name" value="${escapeHtml(office.brand_name)}">
+        </div>
+        <div class="brand-field">
+          <label>Font for the brand name on the office wall</label>
+          <select id="bf-font">${fontOptionsHtml}</select>
+        </div>
+        <div class="brand-field full">
+          <label>Or upload your own font file</label>
+          <div class="upload-row">
+            <div class="upload-preview" id="bf-font-preview">${customName ? escapeHtml(customName) : "None uploaded"}</div>
+            <div class="upload-btns">
+              <input type="file" accept="${ACCEPTED_FONT_TYPES}" id="bf-font-file" style="display:none">
+              <button type="button" class="pick" id="bf-font-pick">Choose font file&hellip;</button>
+              <button type="button" class="clear" id="bf-font-clear"${office.custom_font ? "" : ' style="display:none"'}>Remove</button>
+            </div>
+          </div>
+          <p class="file-types-note">WOFF2, WOFF, TTF or OTF, up to about 4.5MB. Uploading one selects it automatically above.</p>
+        </div>
+        ${previewBlock("Logo (shown in the header)", "logo", office.logo)}
+        ${previewBlock("Wall design", "wall_texture", office.wall_texture, true)}
+        ${previewBlock("Floor design", "floor_texture", office.floor_texture, true)}
+      </div>
+      <p class="file-types-note">Accepted image types: PNG, JPG/JPEG, WEBP or SVG, up to about 4.5MB each. For the wall and floor, a seamless/tileable image works best since it repeats to cover the surface.</p>
+      <div class="brand-foot"><span class="hr-note" id="bf-note"></span><button type="button" class="hr-save" id="bf-save" disabled>Save changes</button></div>
+    `;
+
+    const nameInput = brandingEl.querySelector("#bf-name");
+    const fontSelect = brandingEl.querySelector("#bf-font");
+    const saveBtn = brandingEl.querySelector("#bf-save");
+    const note = brandingEl.querySelector("#bf-note");
+    const dirty = () => { saveBtn.disabled = false; };
+
+    nameInput.addEventListener("input", () => { pending.brand_name = nameInput.value; dirty(); });
+    fontSelect.addEventListener("change", () => { pending.font_key = fontSelect.value; dirty(); });
+
+    const fontFileInput = brandingEl.querySelector("#bf-font-file");
+    const fontPickBtn = brandingEl.querySelector("#bf-font-pick");
+    const fontClearBtn = brandingEl.querySelector("#bf-font-clear");
+    const fontPreview = brandingEl.querySelector("#bf-font-preview");
+    fontPickBtn.addEventListener("click", () => fontFileInput.click());
+    fontFileInput.addEventListener("change", async () => {
+      const file = fontFileInput.files[0]; fontFileInput.value = "";
+      if (!file) return;
+      if (file.size > MAX_UPLOAD_BYTES) { note.textContent = "That font file is too large -- keep it under about 4.5MB."; return; }
+      try {
+        const dataUri = await fileToDataUri(file);
+        pending.custom_font = dataUri; pending.custom_font_name = file.name; pending.font_key = "custom";
+        fontPreview.textContent = file.name; fontClearBtn.style.display = "";
+        // add/select a temporary "custom" option so the dropdown reflects the pending choice before saving
+        let opt = fontSelect.querySelector('option[value="custom"]');
+        if (!opt) { opt = document.createElement("option"); opt.value = "custom"; fontSelect.appendChild(opt); }
+        opt.textContent = `${file.name} (your upload)`; opt.selected = true;
+        note.textContent = ""; dirty();
+      } catch (e) { note.textContent = "Could not read that font file."; }
+    });
+    fontClearBtn.addEventListener("click", () => {
+      pending.custom_font = ""; pending.custom_font_name = "";
+      if (fontSelect.value === "custom") { pending.font_key = "georgia"; fontSelect.value = "georgia"; }
+      const opt = fontSelect.querySelector('option[value="custom"]'); if (opt) opt.remove();
+      fontPreview.textContent = "None uploaded"; fontClearBtn.style.display = "none";
+      dirty();
+    });
+
+    ["logo", "wall_texture", "floor_texture"].forEach(field => {
+      const fileInput = brandingEl.querySelector(`input[data-file="${field}"]`);
+      const pickBtn = brandingEl.querySelector(`button[data-pick="${field}"]`);
+      const clearBtn = brandingEl.querySelector(`button[data-clear="${field}"]`);
+      const preview = brandingEl.querySelector(`div[data-preview="${field}"]`);
+      pickBtn.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files[0]; fileInput.value = "";
+        if (!file) return;
+        if (file.size > MAX_UPLOAD_BYTES) { note.textContent = "That file is too large -- keep it under about 4.5MB."; return; }
+        try {
+          const dataUri = await fileToDataUri(file);
+          pending[field] = dataUri;
+          preview.innerHTML = `<img src="${dataUri}">`;
+          clearBtn.style.display = "";
+          note.textContent = ""; dirty();
+        } catch (e) { note.textContent = "Could not read that file."; }
+      });
+      clearBtn.addEventListener("click", () => {
+        pending[field] = "";          // empty string is the "remove this image" signal the backend understands
+        preview.innerHTML = "No image";
+        clearBtn.style.display = "none";
+        dirty();
+      });
+    });
+
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true; note.textContent = "Saving...";
+      try {
+        const data = await postJSON("/api/office/branding", pending);
+        Object.assign(window.OFFICE, data);
+        note.textContent = "Saved.";
+        if (window.applyBranding) window.applyBranding(window.OFFICE);   // header + office redraw live, no reload
+        Object.keys(pending).forEach(k => delete pending[k]);
+        setTimeout(() => { if (note.textContent === "Saved.") note.textContent = ""; }, 2500);
+      } catch (e) {
+        saveBtn.disabled = false; note.textContent = "Could not save: " + e.message;
+        console.error("Branding save failed:", e);
+      }
+    });
+  }
+
+  /* ---------------- Office layout tab ---------------- */
+  const DESK_SIZE = { w: 2, d: 1 };
+  const FURN_SIZE = { sofa: { w: 3, d: 1 }, table: { w: 2, d: 1 }, shelf: { w: 3, d: 1 }, counter: { w: 2, d: 1 }, cooler: { w: 1, d: 1 }, showcase: { w: 2, d: 1 } };
+  const OWNER_CELLS = ["2,2", "3,2", "4,2", "3,1"];
+  const DEFAULT_LAYOUT = {
+    desks: {},
+    furniture: { sofa: { x: 4, y: 1 }, table: { x: 5, y: 3 }, shelf: { x: 9, y: 0 }, counter: { x: 12, y: 1 }, cooler: { x: 13, y: 3 }, showcase: { x: 6, y: 9 } },
+    plants: [[1, 1], [13, 5], [0, 10]],
+  };
+  const defaultLayout = () => JSON.parse(JSON.stringify((window.OFFICE && window.OFFICE.default_layout) || DEFAULT_LAYOUT));
+
+  async function renderLayout() {
+    let office;
+    try { office = window.OFFICE || await fetchOffice(); } catch (e) {
+      layoutEl.innerHTML = `<div class="hr-note">Could not load the layout: ${escapeHtml(String(e))}</div>`;
+      return;
+    }
+    const GW = (typeof SimsWorld !== "undefined" && SimsWorld.GW) || 14, GD = (typeof SimsWorld !== "undefined" && SimsWorld.GD) || 11, CS = 28;
+    let state = JSON.parse(JSON.stringify(office.layout || defaultLayout()));
+    let selected = null;
+
+    layoutEl.innerHTML = `
+      <div class="layout-wrap">
+        <p class="layout-help">Click a desk or a piece of furniture to select it, then click an empty cell to move it there. Saving reloads the page so everyone walks to their new spot correctly.</p>
+        <div class="layout-grid" id="layout-grid-el" style="grid-template-columns:repeat(${GW},${CS}px); grid-template-rows:repeat(${GD},${CS}px); width:${GW * CS}px; height:${GD * CS}px;"></div>
+        <div class="layout-status" id="layout-status"></div>
+        <div class="layout-foot">
+          <button type="button" class="layout-reset" id="layout-reset">Reset to default layout</button>
+          <span style="flex:1"></span>
+          <button type="button" class="hr-save" id="layout-save" disabled>Save &amp; reload office</button>
+        </div>
+      </div>`;
+
+    const gridEl2 = layoutEl.querySelector("#layout-grid-el");
+    const statusEl = layoutEl.querySelector("#layout-status");
+    const saveBtn = layoutEl.querySelector("#layout-save");
+
+    function footprint(type, id) {
+      if (type === "desk") return { ...state.desks[id], ...DESK_SIZE };
+      if (type === "furniture") return { ...state.furniture[id], ...(FURN_SIZE[id] || { w: 1, d: 1 }) };
+      return { x: state.plants[id][0], y: state.plants[id][1], w: 1, d: 1 };
+    }
+    function cellsOf(fp) { const cells = []; for (let i = 0; i < fp.w; i++) for (let j = 0; j < fp.d; j++) cells.push(`${fp.x + i},${fp.y + j}`); return cells; }
+    function allItems() {
+      return [...Object.keys(state.desks).map(id => ({ type: "desk", id })),
+              ...Object.keys(state.furniture).map(id => ({ type: "furniture", id })),
+              ...state.plants.map((_, i) => ({ type: "plant", id: i }))];
+    }
+    function canPlace(type, id, nx, ny) {
+      const sz = type === "desk" ? DESK_SIZE : type === "plant" ? { w: 1, d: 1 } : (FURN_SIZE[id] || { w: 1, d: 1 });
+      if (nx < 0 || ny < 0 || nx + sz.w > GW || ny + sz.d > GD) return false;
+      if (type === "desk" && nx - 1 < 0) return false;                      // needs room for the chair, just west
+      const mine = cellsOf({ x: nx, y: ny, w: sz.w, d: sz.d });
+      if (mine.some(c => OWNER_CELLS.includes(c))) return false;
+      const chairCell = type === "desk" ? `${nx - 1},${ny}` : null;
+      for (const it of allItems()) {
+        if (it.type === type && it.id === id) continue;
+        const ofp = footprint(it.type, it.id), ocells = cellsOf(ofp);
+        if (ocells.some(c => mine.includes(c))) return false;
+        if (chairCell && ocells.includes(chairCell)) return false;
+        if (it.type === "desk") { const otherChair = `${ofp.x - 1},${ofp.y}`; if (mine.includes(otherChair) || chairCell === otherChair) return false; }
+      }
+      return true;
+    }
+
+    function redraw() {
+      gridEl2.innerHTML = "";
+      for (let j = 0; j < GD; j++) for (let i = 0; i < GW; i++) {
+        const cell = document.createElement("div"); cell.className = "layout-cell";
+        cell.addEventListener("click", () => onCellClick(i, j));
+        gridEl2.appendChild(cell);
+      }
+      const nameOf = id => (window.TEAM && TEAM.agents[id] && TEAM.agents[id].name) || id;
+      const colorOf = id => (window.TEAM && TEAM.agents[id] && TEAM.agents[id].color) || "#8a93a3";
+      Object.entries(state.desks).forEach(([id, p]) => {
+        const el = document.createElement("div");
+        el.className = "layout-item" + (selected && selected.type === "desk" && selected.id === id ? " selected" : "");
+        el.style.cssText = `left:${p.x * CS}px; top:${p.y * CS}px; width:${DESK_SIZE.w * CS}px; height:${DESK_SIZE.d * CS}px; background:${colorOf(id)};`;
+        el.textContent = nameOf(id);
+        el.addEventListener("click", e => { e.stopPropagation(); onItemClick("desk", id); });
+        gridEl2.appendChild(el);
+      });
+      Object.entries(state.furniture).forEach(([id, p]) => {
+        const sz = FURN_SIZE[id] || { w: 1, d: 1 };
+        const el = document.createElement("div");
+        el.className = "layout-item furniture" + (selected && selected.type === "furniture" && selected.id === id ? " selected" : "");
+        el.style.cssText = `left:${p.x * CS}px; top:${p.y * CS}px; width:${sz.w * CS}px; height:${sz.d * CS}px; background:#9b8bc4;`;
+        el.textContent = id;
+        el.addEventListener("click", e => { e.stopPropagation(); onItemClick("furniture", id); });
+        gridEl2.appendChild(el);
+      });
+      state.plants.forEach((p, i) => {
+        const el = document.createElement("div");
+        el.className = "layout-item furniture" + (selected && selected.type === "plant" && selected.id === i ? " selected" : "");
+        el.style.cssText = `left:${p[0] * CS}px; top:${p[1] * CS}px; width:${CS}px; height:${CS}px; background:#3fae6f;`;
+        el.textContent = "plant";
+        el.addEventListener("click", e => { e.stopPropagation(); onItemClick("plant", i); });
+        gridEl2.appendChild(el);
+      });
+    }
+    function onItemClick(type, id) {
+      selected = { type, id };
+      statusEl.textContent = "Selected -- click an empty cell to move it there.";
+      statusEl.classList.remove("bad");
+      redraw();
+    }
+    function onCellClick(x, y) {
+      if (!selected) { statusEl.textContent = "Select a desk or a piece of furniture first."; return; }
+      const { type, id } = selected;
+      if (!canPlace(type, id, x, y)) { statusEl.textContent = "That spot won't fit there -- try another cell."; statusEl.classList.add("bad"); return; }
+      if (type === "desk") state.desks[id] = { x, y };
+      else if (type === "furniture") state.furniture[id] = { x, y };
+      else state.plants[id] = [x, y];
+      statusEl.textContent = "Moved. Save when you're happy with the layout."; statusEl.classList.remove("bad");
+      saveBtn.disabled = false;
+      redraw();
+    }
+    redraw();
+
+    layoutEl.querySelector("#layout-reset").addEventListener("click", () => {
+      state = defaultLayout(); selected = null;
+      statusEl.textContent = "Reset locally -- click Save to make it permanent."; statusEl.classList.remove("bad");
+      saveBtn.disabled = false;
+      redraw();
+    });
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true; statusEl.textContent = "Saving..."; statusEl.classList.remove("bad");
+      try {
+        await postJSON("/api/office/layout", state);
+        statusEl.textContent = "Saved. Reloading the office...";
+        setTimeout(() => window.location.reload(), 700);
+      } catch (e) {
+        saveBtn.disabled = false; statusEl.textContent = "Could not save: " + e.message; statusEl.classList.add("bad");
+        console.error("Layout save failed:", e);
+      }
+    });
+  }
+
+  function renderOrgChart(team) {
+    const order = team.order, agents = team.agents;
+    const reports = order.filter(id => agents[id] && agents[id].reports_to && agents[id].reports_to !== "ceo");
+    const topId = order.find(id => agents[id] && agents[id].reports_to === "ceo");
+    const node = (label, sub, cls, id) =>
+      `<div class="org-node ${cls || ""}" data-id="${id || ""}"><div class="n-name">${escapeHtml(label)}</div><div class="n-title">${escapeHtml(sub || "")}</div></div>`;
+    let html = `<div class="org-row">${node("You", "CEO", "ceo")}</div><div class="org-connector"></div>`;
+    if (topId) {
+      const a = agents[topId];
+      html += `<div class="org-row">${node(a.name, a.designation, "", topId)}</div><div class="org-connector"></div>`;
+    }
+    html += `<div class="org-row">` + reports.map(id => {
+      const a = agents[id];
+      return node(a.name, a.designation + " \u00b7 " + a.department, "", id);
+    }).join("") + `</div>`;
+    orgEl.innerHTML = html;
+    orgEl.querySelectorAll(".org-node[data-id]").forEach(n => {
+      n.addEventListener("click", () => {
+        const card = gridEl.querySelector(`.hr-card[data-id="${n.dataset.id}"]`);
+        if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    });
+  }
+
+  function skillRow(value) {
+    const row = document.createElement("div");
+    row.className = "hr-skill-row";
+    row.innerHTML = `<input type="text" value="${escapeHtml(value)}"><button type="button" title="Remove">&times;</button>`;
+    row.querySelector("input").addEventListener("input", () => markDirty(row));
+    row.querySelector("button").addEventListener("click", () => { const card = row.closest(".hr-card"); row.remove(); markDirty(card); });
+    return row;
+  }
+  function markDirty(within) {
+    if (!within) return;
+    const card = within.classList && within.classList.contains("hr-card") ? within : within.closest(".hr-card");
+    if (card) card.querySelector(".hr-save").disabled = false;
+  }
+
+  function renderCards(team) {
+    gridEl.innerHTML = "";
+    team.order.forEach(id => {
+      const a = team.agents[id];
+      if (!a) return;
+      const card = document.createElement("div");
+      card.className = "hr-card"; card.dataset.id = id;
+      const reportsLine = a.reports_to === "ceo" ? "Reports to you" : `Reports to ${escapeHtml((team.agents[a.reports_to] || {}).name || a.reports_to)}`;
+      card.innerHTML = `
+        <div class="hr-head">
+          <div class="hr-avatar-row">
+            <div class="hr-avatar" style="background:${a.color}">${initials(a.name)}</div>
+            <div class="hr-color-row">
+              <input type="color" class="f-color" value="${a.color}" title="Department color">
+              <span class="hr-color-hex">${escapeHtml(a.color)}</span>
+            </div>
+          </div>
+          <div>
+            <label>Display name</label>
+            <input type="text" class="f-name" value="${escapeHtml(a.name)}">
+          </div>
+          <div>
+            <label>Character</label>
+            <select class="f-gender">
+              <option value="female" ${a.gender !== "male" ? "selected" : ""}>Female</option>
+              <option value="male" ${a.gender === "male" ? "selected" : ""}>Male</option>
+            </select>
+          </div>
+          <div class="hr-reports">${reportsLine}</div>
+        </div>
+        <div>
+          <label>Job title</label>
+          <input type="text" class="f-designation" value="${escapeHtml(a.designation)}">
+        </div>
+        <div>
+          <label>Department</label>
+          <input type="text" class="f-department" value="${escapeHtml(a.department)}">
+        </div>
+        <div>
+          <label>Skills &amp; responsibilities</label>
+          <div class="hr-skills"></div>
+          <button type="button" class="hr-add-skill">+ Add skill</button>
+        </div>
+        <div class="hr-foot"><span class="hr-note"></span><button type="button" class="hr-more">More settings</button><button type="button" class="hr-save" disabled>Save changes</button></div>
+      `;
+      const skillsEl = card.querySelector(".hr-skills");
+      (a.skills || []).forEach(s => skillsEl.appendChild(skillRow(s)));
+      const nameInput = card.querySelector(".f-name");
+      const colorInput = card.querySelector(".f-color");
+      const avatar = card.querySelector(".hr-avatar");
+      const hexLabel = card.querySelector(".hr-color-hex");
+      nameInput.addEventListener("input", () => { avatar.textContent = initials(nameInput.value); markDirty(card); });
+      colorInput.addEventListener("input", () => { avatar.style.background = colorInput.value; hexLabel.textContent = colorInput.value.toUpperCase(); markDirty(card); });
+      card.querySelector(".f-gender").addEventListener("change", () => markDirty(card));
+      card.querySelector(".f-designation").addEventListener("input", () => markDirty(card));
+      card.querySelector(".f-department").addEventListener("input", () => markDirty(card));
+      card.querySelector(".hr-add-skill").addEventListener("click", () => {
+        const row = skillRow(""); skillsEl.appendChild(row); row.querySelector("input").focus(); markDirty(card);
+      });
+      card.querySelector(".hr-save").addEventListener("click", () => saveCard(id, card));
+      card.querySelector(".hr-more").addEventListener("click", () => { if (window.AT_UI) AT_UI.editAgent(id); });
+      gridEl.appendChild(card);
+    });
+  }
+
+  function updateReportsLines(team) {
+    gridEl.querySelectorAll(".hr-card").forEach(card => {
+      const id = card.dataset.id, a = team.agents[id], span = card.querySelector(".hr-reports");
+      if (span && a) span.textContent = a.reports_to === "ceo" ? "Reports to you" : `Reports to ${(team.agents[a.reports_to] || {}).name || a.reports_to}`;
+    });
+  }
+
+  async function saveCard(id, card) {
+    const btn = card.querySelector(".hr-save"), note = card.querySelector(".hr-note");
+    const name = card.querySelector(".f-name").value.trim();
+    if (!name) { note.textContent = "Name can't be empty."; return; }
+    const color = card.querySelector(".f-color").value;
+    const gender = card.querySelector(".f-gender").value;
+    const designation = card.querySelector(".f-designation").value.trim();
+    const department = card.querySelector(".f-department").value.trim();
+    const skills = [...card.querySelectorAll(".hr-skill-row input")].map(i => i.value.trim()).filter(Boolean);
+    btn.disabled = true; note.textContent = "Saving...";
+    try {
+      const data = await postJSON(`/api/team/${id}`, { name, color, gender, designation, department, skills });
+      const syncError = data.profile._source_sync_error;
+      delete data.profile._source_sync_error;               // don't leave this in the working copy of the profile
+      window.TEAM.agents[id] = data.profile;                 // Sims view picks this up on its next drawn frame
+      note.textContent = syncError
+        ? "Saved (but couldn't update agents_config.py: " + syncError + ")"
+        : "Saved.";
+      if (syncError) btn.disabled = false;   // JSON side is fine; let them retry the source-file part
+      renderOrgChart(window.TEAM);
+      updateReportsLines(window.TEAM);                      // other cards may say "Reports to <this agent>"
+      if (!syncError) setTimeout(() => { if (note.textContent === "Saved.") note.textContent = ""; }, 2500);
+    } catch (e) {
+      btn.disabled = false; note.textContent = "Could not save: " + e.message;
+      console.error("Team profile save failed:", e);
+    }
+  }
+
+  async function open() {
+    bg.style.display = "block";
+    if (window.AT_UI) AT_UI.teamToolbar();
+    if (!loaded) {
+      try {
+        const team = await fetchTeam();
+        renderOrgChart(team); renderCards(team);
+        loaded = true;
+      } catch (e) {
+        gridEl.innerHTML = `<div class="hr-note">Could not load the team roster: ${escapeHtml(String(e))}</div>`;
+      }
+    }
+  }
+  function close() { bg.style.display = "none"; }
+  window.openDashboard = (tab) => { open(); if (tab) { const b = document.querySelector(`#hr-tabs button[data-tab="${tab}"]`); if (b) b.click(); } };
+
+  document.querySelectorAll("#hr-tabs button").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      document.querySelectorAll("#hr-tabs button").forEach(b => b.classList.toggle("on", b === btn));
+      document.querySelectorAll(".hr-tab-panel").forEach(p => p.style.display = "none");
+      const tab = btn.dataset.tab;
+      document.getElementById(`tab-${tab}`).style.display = "block";
+      if (tab === "branding" && !brandingLoaded) { brandingLoaded = true; await renderBranding(); }
+      if (tab === "layout" && !layoutLoaded) { layoutLoaded = true; await renderLayout(); }
+      if (window.AT_UI && AT_UI.tabs[tab]) AT_UI.tabs[tab](document.getElementById(`tab-${tab}`));
+      if (tab === "team" && window.AT_UI) AT_UI.teamToolbar();
+    });
+  });
+
+  openBtn.addEventListener("click", open);
+  closeBtn.addEventListener("click", close);
+  bg.addEventListener("mousedown", e => { if (e.target === bg) close(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && bg.style.display !== "none") close(); });
+
+  // Fetch once at startup (independent of opening the dashboard) so the Sims
+  // view's name tags and desk plates already show real job titles/departments.
+  if (!window.TEAM) AT.ready.then(() => fetchTeam()).catch(() => {});
+})();
+
+</script>
+<script>
+/* ==================================================================
+   Bootstrap: fetches the office layout/branding and the team roster
+   BEFORE the Sims view builds its world, so a saved desk/furniture
+   layout is applied from the very first frame (not hot-swapped later).
+   ================================================================== */
+(async function boot() {
+  if (document.readyState === "loading") await new Promise(r => document.addEventListener("DOMContentLoaded", r));   // all scripts (incl. setup-ui.js) are loaded
+  await AT.ready;
+  window.AT_BOOT = { otherTab: !!AT.otherTab };
+  let office = null, team = null, state = null;
+  try {
+    [office, team, state] = await Promise.all([
+      fetch("/api/office").then(r => r.json()),
+      fetch("/api/team").then(r => r.json()),
+      fetch("/api/state").then(r => r.json()),
+    ]);
+  } catch (e) { console.error(e); }
+  window.OFFICE = office || null;
+  window.TEAM = team || null;
+  window.APPSTATE = state || {};
+  syncAgents(window.TEAM);
+
+  if (state && !state.setupDone && !AT.otherTab && window.AT_UI) {
+    await AT_UI.runWizard();       // resolves after the page reloads itself (never returns normally)
+    return;
+  }
+  if (window.OFFICE && window.OFFICE.layout && typeof SimsWorld !== "undefined" && SimsWorld.configure) {
+    SimsWorld.configure(window.OFFICE.layout);
+  }
+  if (typeof window.initSimsView === "function") window.initSimsView();
+  if (typeof window.applyBranding === "function") window.applyBranding(window.OFFICE);
+  views.init();
+  if (typeof window.chatInit === "function") window.chatInit();
+  if (window.AT_UI) AT_UI.afterBoot(state || {});
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+  window.AT_IS_READY = true;
+  document.dispatchEvent(new Event("at-ready"));
+})();
+
+</script>
+<script>
+/* Welcome tour: opens the first time after setup, and any time from the "?" button. */
+(function () {
+  const KEY = "atTourDone";
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const dot = (c) => `<i style="background:${c}"></i>`;
+  function steps() {
+    const ids = Object.keys(AGENTS), mid = managerId();
+    const company = esc((window.OFFICE && window.OFFICE.brand_name) || "your company");
+    const team = ids.length ? ids.map((id) =>
+      `<li>${dot(agentColor(id))}<span><b>${esc(agentName(id))}</b> (${esc(agentTitle(id))})${AGENTS[id].hint ? ": " + esc(AGENTS[id].hint.split(/(?<=\.)\s/)[0]) : ""}</span></li>`).join("")
+      : `<li><span>No agents yet. Open the Dashboard and press <b>+ Add agent</b>.</span></li>`;
+    const out = [
+      { h: "Welcome to Agent Town", body: `<p>Agent Town is a small AI office for ${company}. Each agent is a specialist with a job, and you are the boss: you give tasks, they deliver drafts, and nothing leaves the office without your approval.</p><p>It runs entirely in this browser tab using your own AI account.</p>` },
+      { h: "Meet your team", body: `<ul>${team}</ul>` },
+      { h: "Give someone a task", body: `<ul><li>${dot("#e0b15a")}<span><b>Tap an agent</b> in the office, or tap their round icon in the Chats bar.</span></li><li>${dot("#e0b15a")}<span><b>Type what you need</b> and press Send.</span></li><li>${dot("#e0b15a")}<span>Paste a <b>website link</b> in your message and the agent will read it.</span></li></ul><p>Keep this tab open while agents work: they stop if you close it.</p>` },
+      { h: "What the colours mean", body: `<p>The coloured markers show what each agent is doing:</p><ul><li>${dot("#4ade80")}<span><b>Free</b>: ready for a new task</span></li><li>${dot("#38bdf8")}<span><b>Working</b>: busy on your task</span></li><li>${dot("#fbbf24")}<span><b>Report ready</b>: they delivered something</span></li><li>${dot("#fb923c")}<span><b>Needs your OK</b>: a plan is waiting for you</span></li></ul>` },
+      { h: "Chats and groups", body: `<p>Every agent has their own chat. Chats are saved in this browser, so you can come back later and see everything.</p><p>Need two or more agents on one job? Use <b>New group</b> in the Chats bar. They take turns and build on each other's answers.</p>` },
+    ];
+    if (mid) out.push({ h: `Let ${esc(agentName(mid))} plan the work`, body: `<p>Give ${esc(agentName(mid))} a goal, for example "Plan next week's promotion". They write a plan and split it into tasks for the team.</p><p>You see the plan first. Press <b>Approve</b> and each agent gets their task in their own chat.</p>` });
+    out.push({ h: "Make it yours", body: `<p>The <b>Dashboard</b> button at the top is where you add or edit agents, change your AI connection, write notes about your company, restyle the office and move the furniture.</p><p><b>Backup &amp; data</b> lets you save everything to a file, because your data lives only in this browser.</p>` });
+    return out;
+  }
+  let i = 0, ov = null;
+  function render() {
+    const S = steps(), st = S[i], last = i === S.length - 1;
+    ov.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-label="Agent Town guide">
+      <div class="step-n">Step ${i + 1} of ${S.length}</div><h2>${st.h}</h2>${st.body}
+      <div class="nav"><div class="dots">${S.map((_, k) => `<span class="${k === i ? "on" : ""}"></span>`).join("")}</div>
+      ${i > 0 ? `<button class="t" data-a="back">Back</button>` : `<button class="skip" data-a="close">Skip</button>`}
+      <button class="t go" data-a="${last ? "close" : "next"}">${last ? "Start using it" : "Next"}</button></div></div>`;
+  }
+  function open(from) { i = from || 0; if (!ov) build(); render(); ov.classList.add("on"); }
+  function close() {
+    if (ov) ov.classList.remove("on");
+    try { localStorage.setItem(KEY, "1"); } catch (e) {}
+  }
+  function build() {
+    ov = document.createElement("div"); ov.id = "tour";
+    ov.addEventListener("click", (e) => {
+      const a = e.target.closest("[data-a]");
+      if (a) { const k = a.dataset.a; if (k === "next") { i++; render(); } else if (k === "back") { i--; render(); } else close(); }
+      else if (e.target === ov) close();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (!ov.classList.contains("on")) return;
+      if (e.key === "Escape") close();
+      else if (e.key === "ArrowRight" && i < steps().length - 1) { i++; render(); }
+      else if (e.key === "ArrowLeft" && i > 0) { i--; render(); }
+    });
+    document.body.appendChild(ov);
+  }
+  window.openTour = open;
+  function init() {
+    const b = document.getElementById("tour-open"); if (b) b.addEventListener("click", () => open(0));
+    const auto = () => {
+      let done = false; try { done = localStorage.getItem(KEY) === "1"; } catch (e) {}
+      if (!done) setTimeout(() => open(0), 800);
+    };
+    if (window.AT_IS_READY) auto(); else document.addEventListener("at-ready", auto);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
+})();
+
+</script>
+<script src="./js/setup-ui.js"></script>
+</body>
+</html>
