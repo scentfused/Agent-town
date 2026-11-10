@@ -129,7 +129,7 @@
   .hr-save { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--brass); background: var(--brass); color: #2a1d08; font-weight: 600; font-size: 12.5px; cursor: pointer; }
   .hr-save:disabled { opacity: .45; cursor: default; background: var(--ink); color: var(--muted); border-color: var(--line); }
 
-  .hr-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+  .hr-tabs { display: flex; flex-wrap: wrap; gap: 0 4px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
   .hr-tabs button { background: none; border: none; color: var(--muted); padding: 9px 4px; margin-right: 20px; font-size: 13.5px; cursor: pointer; border-bottom: 2px solid transparent; }
   .hr-tabs button.on { color: #f3e3bd; border-bottom-color: var(--brass); font-weight: 600; }
   .hr-tab-panel { min-height: 120px; }
@@ -327,6 +327,8 @@
       <button data-tab="team" class="on">Team</button>
       <button data-tab="branding">Branding &amp; interior</button>
       <button data-tab="layout">Office layout</button>
+      <button data-tab="style">Furniture &amp; style</button>
+      <button data-tab="boards">Task boards</button>
       <button data-tab="connections">AI connections</button>
       <button data-tab="company">Company notes</button>
       <button data-tab="data">Backup &amp; data</button>
@@ -337,6 +339,8 @@
     </div>
     <div id="tab-branding" class="hr-tab-panel" style="display:none"></div>
     <div id="tab-layout" class="hr-tab-panel" style="display:none"></div>
+    <div id="tab-style" class="hr-tab-panel" style="display:none"></div>
+    <div id="tab-boards" class="hr-tab-panel" style="display:none"></div>
     <div id="tab-connections" class="hr-tab-panel" style="display:none"></div>
     <div id="tab-company" class="hr-tab-panel" style="display:none"></div>
     <div id="tab-data" class="hr-tab-panel" style="display:none"></div>
@@ -1418,8 +1422,8 @@ function createSimulation(ids) {
    ================================================================== */
 const SimsDraw = (function () {
   const W = SimsWorld;
-  const TW = 36, TH = 18, WALL_H = 132;
-  const WORLD_W = 1000, WORLD_H = 660, OX = 440, OY = 176;
+  const TW = 36, TH = 18, WALL_H = 216;
+  const WORLD_W = 1000, WORLD_H = 744, OX = 440, OY = 260;
   const P = (gx, gy, gz) => ({ x: OX + (gx - gy) * TW, y: OY + (gx + gy) * TH - (gz || 0) });
   const UI_FONT = 'system-ui,"Segoe UI",Roboto,Helvetica,Arial,"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 
@@ -1428,6 +1432,56 @@ const SimsDraw = (function () {
   function shade(h, a) { const [r, g, b] = rgb(h), t = Math.abs(a), f = a < 0 ? 0 : 255;
     return `rgb(${Math.round(r + (f - r) * t)},${Math.round(g + (f - g) * t)},${Math.round(b + (f - b) * t)})`; }
   const alpha = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})`; };
+
+  /* ---------- look & furniture choices (the keys match office.js STYLE_OPTIONS) ---------- */
+  const FLOORS = {
+    wood:      { a: "#cba36c", b: "#c49b64", c: "#cfa972", line: "rgba(92,60,30,0.30)" },
+    lightwood: { a: "#e3c590", b: "#dcbd84", c: "#e8cf9d", line: "rgba(120,90,50,0.25)" },
+    darkwood:  { a: "#86593a", b: "#7d5236", c: "#8f6342", line: "rgba(30,15,5,0.35)" },
+    tile:      { a: "#e6e3dc", b: "#d3cfc6", c: "#e6e3dc", line: "rgba(90,90,90,0.30)", check: true },
+    carpet:    { a: "#7b8795", b: "#76828f", c: "#808c9a", line: "rgba(40,50,60,0.12)" },
+    concrete:  { a: "#b7b7b3", b: "#afafab", c: "#bdbdb9", line: "rgba(60,60,60,0.22)" },
+  };
+  const WALLS = {
+    classic:    { r: ["#efeadf", "#d8d1c0"], l: ["#d5e2da", "#b8cbc0"] },
+    white:      { r: ["#f8f8f5", "#e6e6e0"], l: ["#eef0f1", "#dcdfe2"] },
+    navy:       { r: ["#43527a", "#33406a"], l: ["#4d5d88", "#3a4876"] },
+    terracotta: { r: ["#e2ae96", "#cf9378"], l: ["#d9a088", "#c18268"] },
+    rose:       { r: ["#f4dcdc", "#e6c2c4"], l: ["#eed3dc", "#dcb9c6"] },
+    forest:     { r: ["#b4cdac", "#98b690"], l: ["#a6c29f", "#89a883"] },
+    charcoal:   { r: ["#63666f", "#4e515a"], l: ["#6b6e78", "#555862"] },
+  };
+  const DESKS = {
+    wood:   { body: "#a4714a", top: "#cf9a68", right: "#7c5334", knob: "#e6c79a", plate: "#f6e7cf" },
+    white:  { body: "#dedad2", top: "#f3f0ea", right: "#b3aea3", knob: "#8b867d", plate: "#3a352c" },
+    dark:   { body: "#3b3b46", top: "#575765", right: "#25252d", knob: "#c8a85a", plate: "#f0e6cf" },
+    bamboo: { body: "#c4a565", top: "#dcc384", right: "#957c47", knob: "#6d5a30", plate: "#3d3118" },
+    navy:   { body: "#38517e", top: "#5473a8", right: "#26385a", knob: "#e6c79a", plate: "#f4eede" },
+  };
+  const CHAIR_COLORS = { black: "#2b2f3a", grey: "#7b8392", white: "#e8e6df", brown: "#7a5230", red: "#a8433f", blue: "#3f5f9a" };
+  const SOFAS = { blue: "#5c6f95", grey: "#7b8490", green: "#4f7a5e", brown: "#8a5a3a", red: "#a24a4a", cream: "#cfc3ac" };
+  const TABLES = {
+    wood: { body: "#5b4030", top: "#8a6448" }, white: { body: "#cfcbc3", top: "#f2efe9" }, dark: { body: "#2c2c33", top: "#45454f" },
+    glass: { body: "#33404a", top: "#9ec7d8" }, marble: { body: "#8c8f96", top: "#e9eaee" },
+  };
+  const RUGS = {
+    purple: ["#3b2a4a", "#5a3f6b"], blue: ["#1f3556", "#2f5083"], green: ["#27442f", "#3b6a48"],
+    red: ["#4a2328", "#7a3a42"], grey: ["#3a3d44", "#5a5e68"], none: null,
+  };
+  const STYLE_DEFAULT = { floor: "wood", wall: "classic", wall_color: "#d8d1c0", desk: "wood", chair_color: "team", chair_shape: "office", sofa: "blue", table: "wood", rug: "purple", plant: "leafy", decor: { art: true, clock: true, poster: true, shelf: true }, motto: "Make today count" };
+  function sty() {
+    const o = window.OFFICE && window.OFFICE.style || {};
+    return Object.assign({}, STYLE_DEFAULT, o, { decor: Object.assign({}, STYLE_DEFAULT.decor, o.decor || {}) });
+  }
+  function hexShade(h, a) {
+    const [r, g, b] = rgb(h), t = Math.abs(a), f = a < 0 ? 0 : 255;
+    return "#" + [r, g, b].map(v => Math.round(v + (f - v) * t).toString(16).padStart(2, "0")).join("");
+  }
+  function wallPalette(S0) {
+    if (S0.wall === "custom" && /^#[0-9a-fA-F]{6}$/.test(S0.wall_color)) { const k = S0.wall_color; return { r: [hexShade(k, 0.12), k], l: [hexShade(k, 0.04), hexShade(k, -0.1)] }; }
+    return WALLS[S0.wall] || WALLS.classic;
+  }
+  const BOARDS = () => (window.BOARDS && typeof window.BOARDS === "object" ? window.BOARDS : { week: [], month: [] });
 
   function poly(c, pts, fill, stroke, lw) {
     c.beginPath();
@@ -1547,9 +1601,10 @@ const SimsDraw = (function () {
     g.addColorStop(0, "rgba(224,177,90,0.16)"); g.addColorStop(1, "rgba(224,177,90,0)");
     c.fillStyle = g; c.fillRect(-4000, -4000, 9000, 9000);
 
+    const S0 = sty(), FL = FLOORS[S0.floor] || FLOORS.wood, WP = wallPalette(S0);
     // floor slab edges
-    poly(c, [P(0, GD, 0), P(GW, GD, 0), P(GW, GD, -14), P(0, GD, -14)], "#83593a");
-    poly(c, [P(GW, 0, 0), P(GW, GD, 0), P(GW, GD, -14), P(GW, 0, -14)], "#5f4029");
+    poly(c, [P(0, GD, 0), P(GW, GD, 0), P(GW, GD, -14), P(0, GD, -14)], shade(FL.b, -0.38));
+    poly(c, [P(GW, 0, 0), P(GW, GD, 0), P(GW, GD, -14), P(GW, 0, -14)], shade(FL.b, -0.55));
 
     // wooden floor (or the CEO's own uploaded floor texture)
     const floorPat = floorTexture(c);
@@ -1558,16 +1613,19 @@ const SimsDraw = (function () {
     } else {
       for (let i = 0; i < GW; i++) for (let j = 0; j < GD; j++) {
         const v = ((i * 7 + j * 13) % 5) / 5;
-        const base = v < 0.34 ? "#cba36c" : v < 0.67 ? "#c49b64" : "#cfa972";
-        poly(c, [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)], base, "rgba(92,60,30,0.30)", 1);
-        poly(c, [P(i, j + 0.5), P(i + 1, j + 0.5), P(i + 1, j + 0.5), P(i, j + 0.5)], null, "rgba(92,60,30,0.12)", 1);
+        const base = FL.check ? ((i + j) % 2 ? FL.b : FL.a) : (v < 0.34 ? FL.a : v < 0.67 ? FL.b : FL.c);
+        poly(c, [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)], base, FL.line, 1);
+        if (!FL.check) poly(c, [P(i, j + 0.5), P(i + 1, j + 0.5), P(i + 1, j + 0.5), P(i, j + 0.5)], null, FL.line, 1);
       }
     }
     // rug
-    poly(c, [P(5.3, 4.7), P(10.7, 4.7), P(10.7, 8.6), P(5.3, 8.6)], "#3b2a4a");
-    poly(c, [P(5.5, 4.9), P(10.5, 4.9), P(10.5, 8.4), P(5.5, 8.4)], "#5a3f6b");
-    poly(c, [P(5.8, 5.2), P(10.2, 5.2), P(10.2, 8.1), P(5.8, 8.1)], null, "#e0b15a", 1.5);
-    poly(c, [P(6.1, 5.5), P(9.9, 5.5), P(9.9, 7.8), P(6.1, 7.8)], null, "rgba(224,177,90,0.45)", 1);
+    const RG = RUGS[S0.rug] === undefined ? RUGS.purple : RUGS[S0.rug];
+    if (RG) {
+      poly(c, [P(5.3, 4.7), P(10.7, 4.7), P(10.7, 8.6), P(5.3, 8.6)], RG[0]);
+      poly(c, [P(5.5, 4.9), P(10.5, 4.9), P(10.5, 8.4), P(5.5, 8.4)], RG[1]);
+      poly(c, [P(5.8, 5.2), P(10.2, 5.2), P(10.2, 8.1), P(5.8, 8.1)], null, "#e0b15a", 1.5);
+      poly(c, [P(6.1, 5.5), P(9.9, 5.5), P(9.9, 7.8), P(6.1, 7.8)], null, "rgba(224,177,90,0.45)", 1);
+    }
     // soft shade where the walls meet the floor
     poly(c, [P(0, 0), P(GW, 0), P(GW, 0.7), P(0, 0.7)], "rgba(40,25,10,0.13)");
     poly(c, [P(0, 0), P(0.7, 0), P(0.7, GD), P(0, GD)], "rgba(40,25,10,0.13)");
@@ -1576,19 +1634,19 @@ const SimsDraw = (function () {
     // ----- right wall (plane y = 0) -----
     const wallPat = wallTexture(c);
     g = c.createLinearGradient(0, P(0, 0, H).y, 0, P(0, 0, 0).y + GW * TH);
-    g.addColorStop(0, "#efeadf"); g.addColorStop(1, "#d8d1c0");
+    g.addColorStop(0, WP.r[0]); g.addColorStop(1, WP.r[1]);
     poly(c, [P(0, 0, 0), P(GW, 0, 0), P(GW, 0, H), P(0, 0, H)], wallPat || g);
-    poly(c, [P(0, 0, 0), P(GW, 0, 0), P(GW, 0, 34), P(0, 0, 34)], "#c9bfa9");                // wainscot
-    poly(c, [P(0, 0, 34), P(GW, 0, 34), P(GW, 0, 37), P(0, 0, 37)], "#f6f1e7");
+    poly(c, [P(0, 0, 0), P(GW, 0, 0), P(GW, 0, 34), P(0, 0, 34)], shade(WP.r[1], -0.09));    // wainscot
+    poly(c, [P(0, 0, 34), P(GW, 0, 34), P(GW, 0, 37), P(0, 0, 37)], shade(WP.r[0], 0.45));
     poly(c, [P(0, 0, 0), P(GW, 0, 0), P(GW, 0, 7), P(0, 0, 7)], "#6b4a2f");                   // baseboard
     poly(c, [P(0, 0, H), P(GW, 0, H), P(GW, -0.3, H), P(0, -0.3, H)], "#f4efe4");               // top cap
     poly(c, [P(GW, 0, 0), P(GW, -0.3, 0), P(GW, -0.3, H), P(GW, 0, H)], "#b9b09c");             // end face
     // ----- left wall (plane x = 0) -----
     g = c.createLinearGradient(0, P(0, 0, H).y, 0, P(0, GD, 0).y);
-    g.addColorStop(0, "#d5e2da"); g.addColorStop(1, "#b8cbc0");
+    g.addColorStop(0, WP.l[0]); g.addColorStop(1, WP.l[1]);
     poly(c, [P(0, 0, 0), P(0, GD, 0), P(0, GD, H), P(0, 0, H)], wallPat || g);
-    poly(c, [P(0, 0, 0), P(0, GD, 0), P(0, GD, 34), P(0, 0, 34)], "#a3b8ac");
-    poly(c, [P(0, 0, 34), P(0, GD, 34), P(0, GD, 37), P(0, 0, 37)], "#e9f0eb");
+    poly(c, [P(0, 0, 0), P(0, GD, 0), P(0, GD, 34), P(0, 0, 34)], shade(WP.l[1], -0.1));
+    poly(c, [P(0, 0, 34), P(0, GD, 34), P(0, GD, 37), P(0, 0, 37)], shade(WP.l[0], 0.45));
     poly(c, [P(0, 0, 0), P(0, GD, 0), P(0, GD, 7), P(0, 0, 7)], "#6b4a2f");
     poly(c, [P(0, 0, H), P(0, GD, H), P(-0.3, GD, H), P(-0.3, 0, H)], "#eef4ef");
     poly(c, [P(0, GD, 0), P(-0.3, GD, 0), P(-0.3, GD, H), P(0, GD, H)], "#96a89d");
@@ -1620,8 +1678,8 @@ const SimsDraw = (function () {
         c.fillStyle = "#f2f6f1"; c.fillRect((gy0 + gy1) / 2 - 0.05, z0, 0.1, z1 - z0); c.fillRect(gy0, (z0 + z1) / 2 - 1.5, gy1 - gy0, 3);
       });
     }
-    windowR(0.9, 3.5, 44, 114);
-    windowL(1.0, 3.6, 44, 114);
+    windowR(0.9, 3.5, 44, 150);
+    windowL(1.0, 3.6, 44, 150);
     // light falling through the windows
     if (!sk.night) {
       poly(c, [P(1.0, 0.1), P(3.4, 0.1), P(4.6, 3.4), P(2.2, 3.4)], "rgba(255,244,214,0.13)");
@@ -1642,21 +1700,79 @@ const SimsDraw = (function () {
       c.font = `600 9px ${UI_FONT}`; c.fillStyle = "#b9a98a"; c.fillText("agent town", 60, 12);
     });
     // framed art (right wall)
-    onFaceX(c, 0, 0, 0, () => {
+    if (S0.decor.art) onFaceX(c, 0, 0, 0, () => {
       c.fillStyle = "#3a2a20"; c.fillRect(12.3, 56, 1.35, 52);
       c.fillStyle = "#f2e6d0"; c.fillRect(12.4, 60, 1.15, 44);
-      c.fillStyle = "#c98b4a"; c.fillRect(12.62, 74, 0.28, 16);      // bottle
+      c.fillStyle = "#c98b4a"; c.fillRect(12.62, 74, 0.28, 16);
       c.fillStyle = "#e0b15a"; c.fillRect(12.68, 90, 0.16, 5);
       c.fillStyle = "#8a5a2b"; c.fillRect(12.98, 74, 0.34, 12);
-      // small abstract disc, in the gap between the neon sign and the framed bottle
       c.fillStyle = "#5a3f6b"; c.beginPath(); c.ellipse(10.15, 84, 0.2, 8, 0, 0, 7); c.fill();
       c.fillStyle = "#e0b15a"; c.beginPath(); c.ellipse(10.15, 84, 0.1, 4, 0, 0, 7); c.fill();
     });
-    // ----- left wall: the (wide) team board frame -----
-    onFaceY(c, 0, 0, 0, () => {
-      c.fillStyle = "#4a4038"; c.fillRect(3.75, 36, 7.0, 76);
-      c.fillStyle = "#fbfaf6"; c.fillRect(3.87, 40, 6.76, 68);
+    // wall clock (right wall, above the sign)
+    if (S0.decor.clock) onFaceX(c, 0, 0, 0, () => {
+      c.fillStyle = "#3a2a20"; c.beginPath(); c.ellipse(7.15, 160, 0.34, 14, 0, 0, 7); c.fill();
+      c.fillStyle = "#fbf8f0"; c.beginPath(); c.ellipse(7.15, 160, 0.29, 12, 0, 0, 7); c.fill();
+      c.fillStyle = "#2a2233"; c.fillRect(7.15 - 0.012, 160, 0.024, 9); c.fillRect(7.15, 159.2, 0.15, 1.6);   // minute and hour hands
+      c.fillStyle = "#c0504d"; c.beginPath(); c.ellipse(7.15, 160, 0.03, 1.2, 0, 0, 7); c.fill();
     });
+    // little wall shelf (right wall)
+    if (S0.decor.shelf) onFaceX(c, 0, 0, 0, () => {
+      c.fillStyle = "#6b4a2f"; c.fillRect(3.75, 139, 1.25, 3);
+      c.fillStyle = "#c0504d"; c.fillRect(3.85, 142, 0.14, 15); c.fillStyle = "#4f81bd"; c.fillRect(4.02, 142, 0.12, 12); c.fillStyle = "#e0b15a"; c.fillRect(4.17, 142, 0.14, 16);
+      c.fillStyle = "#b5651d"; c.fillRect(4.5, 142, 0.26, 8); c.fillStyle = "#3fb96e"; c.beginPath(); c.ellipse(4.63, 156, 0.2, 9, 0, 0, 7); c.fill();
+    });
+    // motto poster (right wall)
+    if (S0.decor.poster && S0.motto) {
+      onFaceX(c, 0, 0, 0, () => { c.fillStyle = "#1f1a30"; c.fillRect(9.55, 118, 2.7, 70); c.fillStyle = "#2c2444"; c.fillRect(9.62, 122, 2.56, 62); c.fillStyle = "#e0b15a"; c.fillRect(9.8, 124, 2.2, 1.6); c.fillRect(9.8, 180, 2.2, 1.6); });
+      textRight(c, 9.72, 0, 176, () => {
+        c.font = `italic 700 10px Georgia,serif`; c.fillStyle = "#f6e7cf";
+        const words = S0.motto.split(/\s+/), lines = []; let cur = "";
+        words.forEach(w => { const t = cur ? cur + " " + w : w; if (c.measureText(t).width > 78 && cur) { lines.push(cur); cur = w; } else cur = t; });
+        if (cur) lines.push(cur);
+        lines.slice(0, 5).forEach((ln, k) => c.fillText(ln, 0, 8 + k * 12.5));
+      });
+    }
+    // ----- left wall: the team board frame (lower row) -----
+    onFaceY(c, 0, 0, 0, () => {
+      c.fillStyle = "#4a4038"; c.fillRect(3.75, 26, 7.0, 86);
+      c.fillStyle = "#fbfaf6"; c.fillRect(3.87, 30, 6.76, 78);
+    });
+    // ----- left wall: weekly and monthly task boards (upper row) -----
+    const BD = BOARDS(), now = new Date();
+    const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    const fmt = d => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    function taskBoard(gyMin, gyMax, title, sub, items) {
+      const z0 = 122, h = 88, wPx = (gyMax - gyMin - 0.24) * TW;
+      onFaceY(c, 0, 0, 0, () => {
+        c.fillStyle = "#4a4038"; c.fillRect(gyMin, z0, gyMax - gyMin, h);
+        c.fillStyle = "#fffdf6"; c.fillRect(gyMin + 0.1, z0 + 4, gyMax - gyMin - 0.2, h - 8);
+        c.fillStyle = "#e0b15a"; c.fillRect(gyMin + 0.1, z0 + h - 17, gyMax - gyMin - 0.2, 13);
+      });
+      textLeft(c, 0, gyMax - 0.12, z0 + h - 4, () => {
+        c.font = `italic 700 9.5px Georgia,serif`; c.fillStyle = "#2a1f12"; c.fillText(title, 3, 9);
+        c.font = `600 7.5px ${UI_FONT}`; c.fillStyle = "#4a3a1e"; c.textAlign = "right"; c.fillText(sub, wPx - 3, 9); c.textAlign = "left";
+        const list = items.slice().sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
+        const max = 6, show = list.length > max ? list.slice(0, max - 1) : list;
+        c.font = `500 8px ${UI_FONT}`;
+        if (!list.length) { c.fillStyle = "#9a9080"; c.font = `italic 500 8px ${UI_FONT}`; c.fillText("Nothing planned yet", 6, 28); }
+        show.forEach((it, k) => {
+          const y = 27 + k * 10.6;
+          c.strokeStyle = "#6b6478"; c.lineWidth = 0.9; c.strokeRect(3.5, y - 6.2, 6, 6);
+          if (it.done) { c.strokeStyle = "#2f9e5b"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(4.5, y - 3); c.lineTo(6.3, y - 1); c.lineTo(9.4, y - 6.6); c.stroke(); }
+          let t = it.text; const maxW = wPx - 28;
+          while (t.length > 3 && c.measureText(t).width > maxW) t = t.slice(0, -2);
+          if (t !== it.text) t += "…";
+          c.fillStyle = it.done ? "#a39a8a" : "#2a2233"; c.fillText(t, 13, y);
+          if (it.done) { c.fillStyle = "#a39a8a"; c.fillRect(13, y - 2.8, c.measureText(t).width, 0.8); }
+          const col = it.agent && teamOf(it.agent) ? deptColor(it.agent) : null;
+          if (col) { c.fillStyle = col; c.beginPath(); c.arc(wPx - 8, y - 3, 3, 0, 7); c.fill(); }
+        });
+        if (list.length > max) { c.fillStyle = "#6b6478"; c.font = `italic 600 8px ${UI_FONT}`; c.fillText("+" + (list.length - (max - 1)) + " more...", 13, 27 + (max - 1) * 10.6); }
+      });
+    }
+    taskBoard(7.35, 10.75, "This week", fmt(mon) + " – " + fmt(sun), BD.week || []);
+    taskBoard(3.75, 7.15, "This month", now.toLocaleDateString("en-US", { month: "long" }), BD.month || []);
   }
 
   /* ============================ FURNITURE ============================ */
@@ -1667,23 +1783,24 @@ const SimsDraw = (function () {
     isoBox(c, cx + 0.12, cy + 0.14, 0.76, 0.72, 14, 8, col, { top: shade(col, 0.22) });   // seat
   }
 
-  function chairWest(c, cx, cy, col) {
-    isoBox(c, cx + 0.42, cy + 0.42, 0.16, 0.16, 0, 14, "#22262f");
+  function chairWest(c, cx, cy, col, shape) {
+    isoBox(c, cx + 0.42, cy + 0.42, 0.16, 0.16, 0, shape === "stool" ? 20 : 14, "#22262f");
     poly(c, [P(cx + 0.1, cy + 0.5, 0.5), P(cx + 0.5, cy + 0.9, 0.5), P(cx + 0.9, cy + 0.5, 0.5), P(cx + 0.5, cy + 0.1, 0.5)], "rgba(0,0,0,0.14)");
-    isoBox(c, cx + 0.03, cy + 0.12, 0.14, 0.76, 20, 32, col);                              // backrest (west)
+    if (shape === "stool") { isoBox(c, cx + 0.2, cy + 0.2, 0.6, 0.6, 20, 7, col, { top: shade(col, 0.22) }); return; }
+    isoBox(c, cx + 0.03, cy + 0.12, 0.14, 0.76, 20, shape === "highback" ? 52 : 32, col);  // backrest (west)
     isoBox(c, cx + 0.14, cy + 0.12, 0.72, 0.76, 14, 8, col, { top: shade(col, 0.22) });    // seat
   }
 
   function deskAt(c, id, ws, mode, t) {
-    const x = ws.x, y = ws.y;
-    isoBox(c, x, y, 2, 1, 0, 34, "#a4714a", { top: "#cf9a68", right: "#7c5334" });
+    const x = ws.x, y = ws.y, DK = DESKS[sty().desk] || DESKS.wood;
+    isoBox(c, x, y, 2, 1, 0, 34, DK.body, { top: DK.top, right: DK.right });
     onFaceX(c, x, y + 1, 0, () => {                                                           // drawers
       c.fillStyle = "rgba(0,0,0,0.16)"; c.fillRect(1.15, 4, 0.75, 24); c.fillRect(0.1, 4, 0.9, 24);
-      c.fillStyle = "#e6c79a"; c.fillRect(0.5, 22, 0.15, 2); c.fillRect(1.5, 22, 0.15, 2);
+      c.fillStyle = DK.knob; c.fillRect(0.5, 22, 0.15, 2); c.fillRect(1.5, 22, 0.15, 2);
     });
     // name plate on the front edge: name, plus a small department tag in that department's colour
     textRight(c, x + 0.16, y + 1, 5, () => {
-      c.font = `700 9px ${UI_FONT}`; c.fillStyle = "#f6e7cf"; c.fillText(nameOf(id), 0, 0);
+      c.font = `700 9px ${UI_FONT}`; c.fillStyle = DK.plate; c.fillText(nameOf(id), 0, 0);
       const dep = departmentOf(id), dw = dep.length * 3.7 + 10;
       c.fillStyle = deptColor(id); rr(c, 0, 5, dw, 10, 4); c.fill();
       c.font = `700 7px ${UI_FONT}`; c.fillStyle = "#0e0b18"; c.fillText(dep.toUpperCase(), 4, 12.5);
@@ -1738,17 +1855,17 @@ const SimsDraw = (function () {
   }
 
   function sofa(c) {
-    const f = W.FURNITURE.sofa, col = "#5c6f95";
+    const f = W.FURNITURE.sofa, col = SOFAS[sty().sofa] || SOFAS.blue;
     isoBox(c, f.x, f.y, f.w, 1, 0, 16, col, { top: shade(col, 0.1) });
     isoBox(c, f.x, f.y, f.w, 0.3, 16, 30, col, { top: shade(col, 0.2) });
     isoBox(c, f.x, f.y + 0.3, 0.26, 0.7, 16, 14, col, { top: shade(col, 0.2) });
     isoBox(c, f.x + f.w - 0.26, f.y + 0.3, 0.26, 0.7, 16, 14, col, { top: shade(col, 0.2) });
-    for (let i = 0; i < 3; i++) isoBox(c, f.x + 0.28 + i * 0.82, f.y + 0.32, 0.78, 0.66, 16, 5, "#6c80a8", { top: "#7c90b8" });
+    for (let i = 0; i < 3; i++) isoBox(c, f.x + 0.28 + i * 0.82, f.y + 0.32, 0.78, 0.66, 16, 5, shade(col, 0.12), { top: shade(col, 0.24) });
     isoBox(c, f.x + 0.5, f.y + 0.35, 0.3, 0.16, 21, 10, "#e0b15a");                          // cushion
   }
   function table(c) {
-    const f = W.FURNITURE.table;
-    isoBox(c, f.x, f.y, f.w, f.d, 0, 15, "#5b4030", { top: "#8a6448" });
+    const f = W.FURNITURE.table, TB = TABLES[sty().table] || TABLES.wood;
+    isoBox(c, f.x, f.y, f.w, f.d, 0, 15, TB.body, { top: TB.top });
     isoBox(c, f.x + 0.2, f.y + 0.25, 0.5, 0.4, 15, 3, "#e8e2d4");
     isoBox(c, f.x + 1.15, f.y + 0.3, 0.2, 0.2, 15, 7, "#f4f6f9");
   }
@@ -1808,11 +1925,22 @@ const SimsDraw = (function () {
   }
   function plant(c, gx, gy, big) {
     isoBox(c, gx + 0.25, gy + 0.25, 0.5, 0.5, 0, 16, "#b5651d", { top: "#3b2a1e" });
-    const p = P(gx + 0.5, gy + 0.5, 16), n = big ? 9 : 7;
+    const kind = sty().plant, p0 = P(gx + 0.5, gy + 0.5, 16);
+    if (kind === "cactus") {
+      c.fillStyle = "#4f9a63"; rr(c, p0.x - 7, p0.y - 48, 14, 50, 7); c.fill();
+      rr(c, p0.x + 5, p0.y - 36, 7, 20, 3.5); c.fill(); rr(c, p0.x - 12, p0.y - 30, 7, 16, 3.5); c.fill();
+      c.fillStyle = "#e86a9a"; c.beginPath(); c.arc(p0.x, p0.y - 49, 3.2, 0, 7); c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.4)"; c.lineWidth = 1; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(p0.x - 2, p0.y - 40 + k * 9); c.lineTo(p0.x + 2, p0.y - 40 + k * 9); c.stroke(); }
+      return;
+    }
+    const p = p0, n = big ? 9 : 7;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2, lx = Math.cos(a) * 14, ly = -14 - (i % 3) * 9 - Math.sin(a) * 4;
       c.fillStyle = ["#2f9e5b", "#3fb96e", "#278a4d"][i % 3];
       c.beginPath(); c.ellipse(p.x + lx, p.y + ly, 7, 15, a * 0.5, 0, Math.PI * 2); c.fill();
+    }
+    if (kind === "flowers") {
+      for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + 0.4; c.fillStyle = ["#e86a9a", "#f6c453", "#f08a5d"][i % 3]; c.beginPath(); c.arc(p.x + Math.cos(a) * 13, p.y - 26 - (i % 3) * 8 - Math.sin(a) * 4, 3.4, 0, 7); c.fill(); }
     }
   }
 
@@ -1961,16 +2089,17 @@ const SimsDraw = (function () {
   function statusText(a, S) { return a.mode === "working" ? "working" : a.mode === "done" ? "delivered" : a.mode === "error" ? "problem" : (S.attention && a.id === managerId()) ? "waiting on you" : "free"; }
 
   function drawTeamBoard(c, S) {
-    // whiteboard text on the left wall, right where the (widened) frame is painted
-    const ids = Object.keys(S.actors);
-    textLeft(c, 0, 8.6, 88, () => {
-      c.font = `italic 700 13px Georgia,serif`; c.fillStyle = "#3a2a20"; c.fillText("Team board", 6, 0);
-      c.font = `600 10px ${UI_FONT}`;
-      ids.forEach((id, i) => {
-        const a = S.actors[id], y = 15 + i * 12.6, col = PLUMB[a.mode] || PLUMB.idle;
-        c.fillStyle = col; c.beginPath(); c.arc(9, y - 3, 3.2, 0, 7); c.fill();
-        c.fillStyle = "#2a2233"; c.fillText(nameOf(id), 18, y);
-        c.fillStyle = "#6b6478"; c.fillText(statusText(a, S), 100, y);
+    // whiteboard text on the left wall (lower row of the wall); two columns once there are more than five agents
+    const ids = Object.keys(S.actors), two = ids.length > 5, colW = 126;
+    textLeft(c, 0, 10.55, 106, () => {
+      c.font = `italic 700 12px Georgia,serif`; c.fillStyle = "#3a2a20"; c.fillText("Team board", 4, 10);
+      c.font = `600 9.5px ${UI_FONT}`;
+      ids.slice(0, 10).forEach((id, i) => {
+        const a = S.actors[id], col = two ? Math.floor(i / 5) : 0, row = two ? i % 5 : i, x0 = col * colW, y = 25 + row * 11.6, pc = PLUMB[a.mode] || PLUMB.idle;
+        c.fillStyle = pc; c.beginPath(); c.arc(x0 + 8, y - 3, 3.1, 0, 7); c.fill();
+        let nm = nameOf(id); while (nm.length > 3 && c.measureText(nm).width > 52) nm = nm.slice(0, -2);
+        c.fillStyle = "#2a2233"; c.fillText(nm, x0 + 16, y);
+        c.font = `600 8px ${UI_FONT}`; c.fillStyle = "#6b6478"; c.fillText(statusText(a, S), x0 + (two ? 70 : 100), y); c.font = `600 9.5px ${UI_FONT}`;
       });
     });
   }
@@ -1998,7 +2127,8 @@ const SimsDraw = (function () {
     Object.entries(W.WS).forEach(([id, ws]) => {
       const col = shade(deptColor(id), -0.45).replace("rgb(", "").replace(")", "").split(",").map(Number);
       const chairCol = "#" + col.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("");
-      add(ws.x - 0.5 + ws.y + 0.5, c => chairWest(c, ws.x - 1, ws.y, chairCol));
+      const ST = sty(), cc = ST.chair_color === "team" ? chairCol : (CHAIR_COLORS[ST.chair_color] || chairCol);
+      add(ws.x - 0.5 + ws.y + 0.5, c => chairWest(c, ws.x - 1, ws.y, cc, ST.chair_shape));
       add(ws.x + 1 + ws.y + 0.5, c => deskAt(c, id, ws, S.actors[id].mode, t));
     });
     add(W.CEO.x + W.CEO.w / 2 + W.CEO.y + 0.5, c => ceoDesk(c, S, t));
@@ -2947,15 +3077,17 @@ class TownScene extends Phaser.Scene {
   if (document.readyState === "loading") await new Promise(r => document.addEventListener("DOMContentLoaded", r));   // all scripts (incl. setup-ui.js) are loaded
   await AT.ready;
   window.AT_BOOT = { otherTab: !!AT.otherTab };
-  let office = null, team = null, state = null;
+  let office = null, team = null, state = null, boards = null;
   try {
-    [office, team, state] = await Promise.all([
+    [office, team, state, boards] = await Promise.all([
       fetch("/api/office").then(r => r.json()),
       fetch("/api/team").then(r => r.json()),
       fetch("/api/state").then(r => r.json()),
+      fetch("/api/boards").then(r => r.json()),
     ]);
   } catch (e) { console.error(e); }
   window.OFFICE = office || null;
+  window.BOARDS = boards || { week: [], month: [] };
   window.TEAM = team || null;
   window.APPSTATE = state || {};
   syncAgents(window.TEAM);
